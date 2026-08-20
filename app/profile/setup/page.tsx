@@ -53,7 +53,11 @@ export default function ProfileSetupPage() {
             ? String(data.graduation_year)
             : ""
         );
-        setSkills(data.skills?.join(", ") || "");
+        setSkills(
+          Array.isArray(data.skills)
+            ? data.skills.join(", ")
+            : ""
+        );
         setBio(data.bio || "");
       } else if (user.user_metadata?.full_name) {
         setFullName(user.user_metadata.full_name);
@@ -83,6 +87,35 @@ export default function ProfileSetupPage() {
       return;
     }
 
+    const cleanFullName = fullName.trim();
+    const cleanCollege = college.trim();
+    const cleanBranch = branch.trim();
+    const cleanBio = bio.trim();
+
+    if (!cleanFullName) {
+      setError("Please enter your full name.");
+      setSaving(false);
+      return;
+    }
+
+    if (!cleanCollege) {
+      setError("Please enter your college.");
+      setSaving(false);
+      return;
+    }
+
+    if (!cleanBranch) {
+      setError("Please enter your branch.");
+      setSaving(false);
+      return;
+    }
+
+    if (!cleanBio) {
+      setError("Please write a short bio.");
+      setSaving(false);
+      return;
+    }
+
     const skillList = skills
       .split(",")
       .map((skill) => skill.trim())
@@ -106,12 +139,12 @@ export default function ProfileSetupPage() {
       .from("profiles")
       .upsert({
         id: user.id,
-        full_name: fullName.trim(),
-        college: college.trim(),
-        branch: branch.trim(),
+        full_name: cleanFullName,
+        college: cleanCollege,
+        branch: cleanBranch,
         graduation_year: year,
         skills: skillList,
-        bio: bio.trim(),
+        bio: cleanBio,
         updated_at: new Date().toISOString(),
       });
 
@@ -163,7 +196,7 @@ export default function ProfileSetupPage() {
           className="mt-10 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
         >
 
-          {/* Name + College */}
+          {/* Full Name + College */}
           <div className="grid gap-6 md:grid-cols-2">
 
             <div>

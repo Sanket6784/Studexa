@@ -17,7 +17,6 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -36,8 +35,8 @@ export default function EditProfilePage() {
         .eq("id", user.id)
         .single();
 
-      if (error) {
-        setError(error.message);
+      if (error || !data) {
+        setError("Could not load your profile.");
         setLoading(false);
         return;
       }
@@ -48,7 +47,7 @@ export default function EditProfilePage() {
       setGraduationYear(
         data.graduation_year ? String(data.graduation_year) : ""
       );
-      setSkills(data.skills ? data.skills.join(", ") : "");
+      setSkills(data.skills?.join(", ") || "");
       setBio(data.bio || "");
 
       setLoading(false);
@@ -62,7 +61,6 @@ export default function EditProfilePage() {
 
     setSaving(true);
     setError("");
-    setSuccess("");
 
     const {
       data: { user },
@@ -95,19 +93,19 @@ export default function EditProfilePage() {
       .eq("id", user.id);
 
     if (error) {
+      console.error(error);
       setError(error.message);
       setSaving(false);
       return;
     }
 
-    setSuccess("Profile updated successfully!");
-    setSaving(false);
+    router.push("/dashboard");
   }
 
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-lg font-semibold text-slate-900">
+        <p className="text-lg font-bold text-slate-900">
           Loading profile...
         </p>
       </main>
@@ -130,7 +128,7 @@ export default function EditProfilePage() {
 
           <button
             onClick={() => router.push("/dashboard")}
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
           >
             Back to dashboard
           </button>
@@ -141,6 +139,7 @@ export default function EditProfilePage() {
       {/* Page */}
       <section className="mx-auto max-w-3xl px-6 py-12">
 
+        {/* Header */}
         <div className="text-center">
 
           <p className="text-sm font-bold tracking-widest text-blue-600">
@@ -152,10 +151,17 @@ export default function EditProfilePage() {
           </h1>
 
           <p className="mt-3 text-slate-600">
-            Keep your Studexa profile up to date.
+            Keep your student identity up to date.
           </p>
 
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <form
@@ -166,39 +172,86 @@ export default function EditProfilePage() {
           {/* Name + College */}
           <div className="grid gap-6 md:grid-cols-2">
 
-            <InputField
-              label="Full name"
-              value={fullName}
-              setValue={setFullName}
-              placeholder="Your full name"
-            />
+            <div>
+              <label
+                htmlFor="fullName"
+                className="mb-2 block text-sm font-bold text-slate-800"
+              >
+                Full name
+              </label>
 
-            <InputField
-              label="College"
-              value={college}
-              setValue={setCollege}
-              placeholder="Your college"
-            />
+              <input
+                id="fullName"
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="college"
+                className="mb-2 block text-sm font-bold text-slate-800"
+              >
+                College
+              </label>
+
+              <input
+                id="college"
+                type="text"
+                required
+                value={college}
+                onChange={(e) => setCollege(e.target.value)}
+                placeholder="Your college"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
 
           </div>
 
           {/* Branch + Graduation */}
           <div className="mt-6 grid gap-6 md:grid-cols-2">
 
-            <InputField
-              label="Branch"
-              value={branch}
-              setValue={setBranch}
-              placeholder="Computer Science Engineering"
-            />
+            <div>
+              <label
+                htmlFor="branch"
+                className="mb-2 block text-sm font-bold text-slate-800"
+              >
+                Branch
+              </label>
 
-            <InputField
-              label="Graduation year"
-              value={graduationYear}
-              setValue={setGraduationYear}
-              placeholder="2027"
-              type="number"
-            />
+              <input
+                id="branch"
+                type="text"
+                required
+                value={branch}
+                onChange={(e) => setBranch(e.target.value)}
+                placeholder="Computer Science Engineering"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="graduationYear"
+                className="mb-2 block text-sm font-bold text-slate-800"
+              >
+                Graduation year
+              </label>
+
+              <input
+                id="graduationYear"
+                type="number"
+                required
+                value={graduationYear}
+                onChange={(e) => setGraduationYear(e.target.value)}
+                placeholder="2027"
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
 
           </div>
 
@@ -218,11 +271,11 @@ export default function EditProfilePage() {
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
               placeholder="Java, Python, React, DSA"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
 
-            <p className="mt-2 text-xs font-medium text-slate-500">
-              Separate each skill with a comma.
+            <p className="mt-2 text-xs text-slate-500">
+              Separate skills with commas.
             </p>
 
           </div>
@@ -239,75 +292,39 @@ export default function EditProfilePage() {
 
             <textarea
               id="bio"
+              rows={6}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell other students about yourself..."
-              rows={6}
-              className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              placeholder="Tell people about yourself..."
+              className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
 
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
-              {error}
-            </div>
-          )}
+          {/* Buttons */}
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
 
-          {/* Success */}
-          {success && (
-            <div className="mt-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-700">
-              {success}
-            </div>
-          )}
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 rounded-xl bg-blue-600 px-6 py-4 font-bold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Saving changes..." : "Save Changes →"}
+            </button>
 
-          {/* Save */}
-          <button
-            type="submit"
-            disabled={saving}
-            className="mt-8 w-full rounded-xl bg-blue-600 px-6 py-4 text-base font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? "Saving changes..." : "Save changes"}
-          </button>
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard")}
+              className="rounded-xl border border-slate-300 bg-white px-6 py-4 font-bold text-slate-800 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+
+          </div>
 
         </form>
 
       </section>
     </main>
-  );
-}
-
-function InputField({
-  label,
-  value,
-  setValue,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  setValue: (value: string) => void;
-  placeholder: string;
-  type?: string;
-}) {
-  return (
-    <div>
-
-      <label
-        className="mb-2 block text-sm font-bold text-slate-800"
-      >
-        {label}
-      </label>
-
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-      />
-
-    </div>
   );
 }

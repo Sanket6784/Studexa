@@ -43,16 +43,8 @@ export default function CommunityPage() {
   const [commentAuthors, setCommentAuthors] = useState<
     Record<string, Profile>
   >({});
-  const [commentText, setCommentText] = useState<
-    Record<string, string>
-  >({});
-  const [openComments, setOpenComments] = useState<
-    Record<string, boolean>
-  >({});
-
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
-
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -73,10 +65,6 @@ export default function CommunityPage() {
       return;
     }
 
-    /* -----------------------------
-       Load Posts
-    ----------------------------- */
-
     const { data: postData, error: postError } = await supabase
       .from("posts")
       .select("*")
@@ -84,7 +72,7 @@ export default function CommunityPage() {
 
     if (postError) {
       console.error(postError);
-      setError(postError.message);
+      setError("Could not load the community.");
       setLoading(false);
       return;
     }
@@ -95,59 +83,37 @@ export default function CommunityPage() {
       return;
     }
 
-    /* -----------------------------
-       Load Post Authors
-    ----------------------------- */
-
-    const userIds = [
-      ...new Set(postData.map((post) => post.user_id)),
-    ];
+    const userIds = [...new Set(postData.map((post) => post.user_id))];
 
     const { data: profileData } = await supabase
       .from("profiles")
       .select("id, full_name, college, branch")
       .in("id", userIds);
 
-    /* -----------------------------
-       Load Likes
-    ----------------------------- */
-
     const postIds = postData.map((post) => post.id);
 
-    const { data: likesData, error: likesError } =
-      await supabase
-        .from("post_likes")
-        .select("post_id, user_id")
-        .in("post_id", postIds);
+    const { data: likesData, error: likesError } = await supabase
+      .from("post_likes")
+      .select("post_id, user_id")
+      .in("post_id", postIds);
 
     if (likesError) {
       console.error(likesError);
     }
 
-    /* -----------------------------
-       Load Comments
-    ----------------------------- */
-
-    const { data: commentsData, error: commentsError } =
-      await supabase
-        .from("post_comments")
-        .select("*")
-        .in("post_id", postIds)
-        .order("created_at", { ascending: true });
+    const { data: commentsData, error: commentsError } = await supabase
+      .from("post_comments")
+      .select("*")
+      .in("post_id", postIds)
+      .order("created_at", { ascending: true });
 
     if (commentsError) {
       console.error(commentsError);
     }
 
-    /* -----------------------------
-       Load Comment Authors
-    ----------------------------- */
-
     const commentUserIds = [
       ...new Set(
-        (commentsData || []).map(
-          (comment) => comment.user_id
-        )
+        (commentsData || []).map((comment) => comment.user_id)
       ),
     ];
 
@@ -162,10 +128,6 @@ export default function CommunityPage() {
       commentProfileData = data || [];
     }
 
-    /* -----------------------------
-       Group Comments
-    ----------------------------- */
-
     const groupedComments: Record<string, Comment[]> = {};
 
     (commentsData || []).forEach((comment) => {
@@ -176,43 +138,28 @@ export default function CommunityPage() {
       groupedComments[comment.post_id].push(comment);
     });
 
-    /* -----------------------------
-       Comment Authors Map
-    ----------------------------- */
-
     const authors: Record<string, Profile> = {};
 
     commentProfileData.forEach((profile) => {
       authors[profile.id] = profile;
     });
 
-    /* -----------------------------
-       Combine Everything
-    ----------------------------- */
-
     const combinedPosts = postData.map((post) => {
       const postLikes =
-        likesData?.filter(
-          (like) => like.post_id === post.id
-        ) || [];
+        likesData?.filter((like) => like.post_id === post.id) || [];
 
-      const postComments =
-        groupedComments[post.id] || [];
+      const postComments = groupedComments[post.id] || [];
 
       return {
         ...post,
-
         author:
           profileData?.find(
             (profile) => profile.id === post.user_id
           ) || null,
-
         likeCount: postLikes.length,
-
         likedByMe: postLikes.some(
           (like) => like.user_id === user.id
         ),
-
         commentCount: postComments.length,
       };
     });
@@ -222,10 +169,6 @@ export default function CommunityPage() {
     setPosts(combinedPosts);
     setLoading(false);
   }
-
-  /* -----------------------------
-     Like / Unlike
-  ----------------------------- */
 
   async function toggleLike(postId: string) {
     const {
@@ -237,9 +180,7 @@ export default function CommunityPage() {
       return;
     }
 
-    const currentPost = posts.find(
-      (post) => post.id === postId
-    );
+    const currentPost = posts.find((post) => post.id === postId);
 
     if (!currentPost) return;
 
@@ -261,10 +202,7 @@ export default function CommunityPage() {
             ? {
                 ...post,
                 likedByMe: false,
-                likeCount: Math.max(
-                  0,
-                  post.likeCount - 1
-                ),
+                likeCount: Math.max(0, post.likeCount - 1),
               }
             : post
         )
@@ -295,10 +233,6 @@ export default function CommunityPage() {
       );
     }
   }
-
-  /* -----------------------------
-     Add Comment
-  ----------------------------- */
 
   async function addComment(postId: string) {
     const text = commentText[postId]?.trim();
@@ -333,10 +267,7 @@ export default function CommunityPage() {
 
     setComments((current) => ({
       ...current,
-      [postId]: [
-        ...(current[postId] || []),
-        newComment,
-      ],
+      [postId]: [...(current[postId] || []), newComment],
     }));
 
     const { data: profileData } = await supabase
@@ -369,18 +300,21 @@ export default function CommunityPage() {
     );
   }
 
-  /* -----------------------------
-     Delete Comment
-  ----------------------------- */
+  async function deleteComment(postId: string, commentId: string) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  async function deleteComment(
-    postId: string,
-    commentId: string
-  ) {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
     const { error } = await supabase
       .from("post_comments")
       .delete()
-      .eq("id", commentId);
+      .eq("id", commentId)
+      .eq("user_id", user.id);
 
     if (error) {
       console.error(error);
@@ -399,19 +333,12 @@ export default function CommunityPage() {
         post.id === postId
           ? {
               ...post,
-              commentCount: Math.max(
-                0,
-                post.commentCount - 1
-              ),
+              commentCount: Math.max(0, post.commentCount - 1),
             }
           : post
       )
     );
   }
-
-  /* -----------------------------
-     Toggle Comments
-  ----------------------------- */
 
   function toggleComments(postId: string) {
     setOpenComments((current) => ({
@@ -419,57 +346,6 @@ export default function CommunityPage() {
       [postId]: !current[postId],
     }));
   }
-
-  /* -----------------------------
-     Categories
-  ----------------------------- */
-
-  const categories = [
-    "All",
-    ...Array.from(
-      new Set(
-        posts
-          .map((post) => post.category)
-          .filter(Boolean) as string[]
-      )
-    ),
-  ];
-
-  /* -----------------------------
-     Search + Filter
-  ----------------------------- */
-
-  const filteredPosts = posts.filter((post) => {
-    const searchText = search.toLowerCase().trim();
-
-    const matchesSearch =
-      !searchText ||
-      post.title
-        .toLowerCase()
-        .includes(searchText) ||
-      post.content
-        .toLowerCase()
-        .includes(searchText) ||
-      post.author?.full_name
-        ?.toLowerCase()
-        .includes(searchText) ||
-      post.author?.college
-        ?.toLowerCase()
-        .includes(searchText) ||
-      post.author?.branch
-        ?.toLowerCase()
-        .includes(searchText);
-
-    const matchesCategory =
-      selectedCategory === "All" ||
-      post.category === selectedCategory;
-
-    return matchesSearch && matchesCategory;
-  });
-
-  /* -----------------------------
-     Loading
-  ----------------------------- */
 
   if (loading) {
     return (
@@ -480,10 +356,6 @@ export default function CommunityPage() {
       </main>
     );
   }
-
-  /* -----------------------------
-     UI
-  ----------------------------- */
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -502,14 +374,7 @@ export default function CommunityPage() {
           <div className="flex gap-3">
 
             <button
-              onClick={() => router.push("/students")}
-              className="hidden rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold text-slate-800 hover:bg-slate-50 md:block"
-            >
-              Students
-            </button>
-
-            <button
-              onClick={() => router.push("/blog/new")}
+              onClick={() => router.push("/community/new")}
               className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
             >
               + Write Article
@@ -528,7 +393,7 @@ export default function CommunityPage() {
       </nav>
 
       {/* Header */}
-      <section className="mx-auto max-w-5xl px-6 py-12">
+      <section className="mx-auto max-w-4xl px-6 py-12">
 
         <p className="text-sm font-bold tracking-widest text-blue-600">
           STUDEXA COMMUNITY
@@ -542,224 +407,154 @@ export default function CommunityPage() {
           Discover ideas, experiences and knowledge shared by students.
         </p>
 
-        {/* Search */}
-        <div className="mt-8">
+        <div className="mt-6 flex items-center justify-between">
 
-          <div className="relative">
+          <p className="text-sm font-bold text-slate-500">
+            {posts.length}{" "}
+            {posts.length === 1 ? "article" : "articles"}
+          </p>
 
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg">
-              🔍
-            </span>
-
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search articles, students or colleges..."
-              className="w-full rounded-2xl border border-slate-300 bg-white px-12 py-4 font-medium text-slate-950 shadow-sm outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-            />
-
-          </div>
+          <button
+            onClick={() => router.push("/community/new")}
+            className="font-bold text-blue-600 hover:text-blue-700"
+          >
+            Share your knowledge →
+          </button>
 
         </div>
 
-        {/* Categories */}
-        <div className="mt-5 flex flex-wrap gap-2">
-
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                selectedCategory === category
-                  ? "bg-blue-600 text-white"
-                  : "border border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:text-blue-600"
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-
-        </div>
-
-        {/* Error */}
         {error && (
           <div className="mt-8 rounded-xl border border-red-200 bg-red-50 p-4 font-semibold text-red-700">
             {error}
           </div>
         )}
 
-        {/* Results count */}
-        <div className="mt-7">
+        {/* Empty State */}
+        {posts.length === 0 ? (
+          <div className="mt-10 rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
 
-          <p className="text-sm font-bold text-slate-500">
-            {filteredPosts.length}{" "}
-            {filteredPosts.length === 1
-              ? "article"
-              : "articles"}{" "}
-            found
-          </p>
+            <div className="text-5xl">📝</div>
 
-        </div>
+            <h2 className="mt-5 text-2xl font-extrabold text-slate-950">
+              No articles yet
+            </h2>
 
-        {/* Feed */}
-        <div className="mt-6 space-y-6">
+            <p className="mx-auto mt-3 max-w-md text-slate-600">
+              Be the first student to share something with the Studexa
+              community.
+            </p>
 
-          {/* No Results */}
-          {filteredPosts.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-
-              <div className="text-4xl">
-                🔎
-              </div>
-
-              <h2 className="mt-4 text-xl font-extrabold text-slate-950">
-                No articles found
-              </h2>
-
-              <p className="mt-2 text-slate-600">
-                Try a different search or category.
-              </p>
-
-              {(search || selectedCategory !== "All") && (
-                <button
-                  onClick={() => {
-                    setSearch("");
-                    setSelectedCategory("All");
-                  }}
-                  className="mt-5 rounded-xl bg-blue-600 px-5 py-2.5 font-bold text-white hover:bg-blue-700"
-                >
-                  Clear filters
-                </button>
-              )}
-
-            </div>
-          )}
-
-          {/* Posts */}
-          {filteredPosts.map((post) => (
-            <article
-              key={post.id}
-              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+            <button
+              onClick={() => router.push("/community/new")}
+              className="mt-6 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white hover:bg-blue-700"
             >
+              Write the First Article →
+            </button>
 
-              {/* Category + Date */}
-              <div className="flex flex-wrap items-center gap-3">
+          </div>
+        ) : (
+          /* Feed */
+          <div className="mt-10 space-y-6">
 
-                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
-                  {post.category || "Engineering"}
-                </span>
-
-                <span className="text-xs font-medium text-slate-500">
-                  {new Date(
-                    post.created_at
-                  ).toLocaleDateString()}
-                </span>
-
-              </div>
-
-              {/* Title */}
-              <h2 className="mt-4 text-2xl font-extrabold text-slate-950">
-                {post.title}
-              </h2>
-
-              {/* Author */}
-              <button
-                onClick={() =>
-                  router.push(`/profile/${post.user_id}`)
-                }
-                className="mt-3 text-left"
+            {posts.map((post) => (
+              <article
+                key={post.id}
+                className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:shadow-md"
               >
 
-                <p className="font-bold text-blue-600 hover:text-blue-700">
-                  {post.author?.full_name ||
-                    "Studexa Student"}
-                </p>
+                {/* Meta */}
+                <div className="flex flex-wrap items-center gap-3">
 
-                {post.author?.college && (
-                  <p className="mt-1 text-sm text-slate-500">
-                    {post.author.college}
-
-                    {post.author.branch &&
-                      ` • ${post.author.branch}`}
-                  </p>
-                )}
-
-              </button>
-
-              {/* Preview */}
-              <p className="mt-5 line-clamp-4 whitespace-pre-wrap leading-7 text-slate-700">
-                {post.content}
-              </p>
-
-              {/* Actions */}
-              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-5">
-
-                {/* Like */}
-                <button
-                  onClick={() =>
-                    toggleLike(post.id)
-                  }
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold ${
-                    post.likedByMe
-                      ? "bg-red-50 text-red-600"
-                      : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-
-                  <span className="text-lg">
-                    {post.likedByMe
-                      ? "❤️"
-                      : "♡"}
+                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                    {post.category || "Engineering"}
                   </span>
 
-                  {post.likeCount}
+                  <span className="text-xs font-medium text-slate-500">
+                    {new Date(post.created_at).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </span>
 
-                  {post.likeCount === 1
-                    ? " Like"
-                    : " Likes"}
+                </div>
 
+                {/* Title */}
+                <h2 className="mt-4 text-2xl font-extrabold text-slate-950 md:text-3xl">
+                  {post.title}
+                </h2>
+
+                {/* Author */}
+                <button
+                  onClick={() =>
+                    router.push(`/profile/${post.user_id}`)
+                  }
+                  className="mt-3 text-left"
+                >
+                  <p className="font-bold text-blue-600 hover:text-blue-700">
+                    {post.author?.full_name || "Studexa Student"}
+                  </p>
+
+                  {post.author?.college && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      {post.author.college}
+                      {post.author.branch &&
+                        ` • ${post.author.branch}`}
+                    </p>
+                  )}
                 </button>
+
+                {/* Preview */}
+                <p className="mt-5 line-clamp-4 whitespace-pre-wrap leading-7 text-slate-700">
+                  {post.content}
+                </p>
+
+                {/* Actions */}
+                <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-5">
+
+                  <button
+                    onClick={() => toggleLike(post.id)}
+                    className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                      post.likedByMe
+                        ? "bg-red-50 text-red-600"
+                        : "text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {post.likedByMe ? "❤️" : "♡"}{" "}
+                    {post.likeCount}{" "}
+                    {post.likeCount === 1 ? "Like" : "Likes"}
+                  </button>
+
+                  <button
+                    onClick={() => toggleComments(post.id)}
+                    className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50"
+                  >
+                    💬 {post.commentCount}{" "}
+                    {post.commentCount === 1 ? "Comment" : "Comments"}
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      router.push(`/community/${post.id}`)
+                    }
+                    className="ml-auto rounded-xl bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-100"
+                  >
+                    Read article →
+                  </button>
+
+                </div>
 
                 {/* Comments */}
-                <button
-                  onClick={() =>
-                    toggleComments(post.id)
-                  }
-                  className="rounded-lg px-3 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
-                >
-                  💬 {post.commentCount}
+                {openComments[post.id] && (
+                  <div className="mt-5 border-t border-slate-100 pt-5">
 
-                  {post.commentCount === 1
-                    ? " Comment"
-                    : " Comments"}
-                </button>
+                    <h3 className="font-extrabold text-slate-950">
+                      Comments
+                    </h3>
 
-                {/* Read */}
-                <button
-                  onClick={() =>
-                    router.push(`/blog/${post.id}`)
-                  }
-                  className="rounded-lg px-3 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50"
-                >
-                  Read article →
-                </button>
+                    <div className="mt-4 space-y-4">
 
-              </div>
-
-              {/* Comments */}
-              {openComments[post.id] && (
-                <div className="mt-5 border-t border-slate-100 pt-5">
-
-                  <h3 className="font-extrabold text-slate-950">
-                    Comments
-                  </h3>
-
-                  {/* Existing comments */}
-                  <div className="mt-4 space-y-4">
-
-                    {(comments[post.id] || []).map(
-                      (comment) => (
+                      {(comments[post.id] || []).map((comment) => (
                         <div
                           key={comment.id}
                           className="rounded-xl bg-slate-50 p-4"
@@ -768,20 +563,10 @@ export default function CommunityPage() {
                           <div className="flex items-start justify-between gap-4">
 
                             <div>
-
-                              <button
-                                onClick={() =>
-                                  router.push(
-                                    `/profile/${comment.user_id}`
-                                  )
-                                }
-                                className="font-bold text-slate-900 hover:text-blue-600"
-                              >
-                                {commentAuthors[
-                                  comment.user_id
-                                ]?.full_name ||
-                                  "Studexa Student"}
-                              </button>
+                              <p className="font-bold text-slate-900">
+                                {commentAuthors[comment.user_id]
+                                  ?.full_name || "Studexa Student"}
+                              </p>
 
                               <p className="mt-1 whitespace-pre-wrap text-slate-700">
                                 {comment.content}
@@ -790,9 +575,8 @@ export default function CommunityPage() {
                               <p className="mt-2 text-xs text-slate-400">
                                 {new Date(
                                   comment.created_at
-                                ).toLocaleDateString()}
+                                ).toLocaleDateString("en-IN")}
                               </p>
-
                             </div>
 
                             <button
@@ -810,65 +594,56 @@ export default function CommunityPage() {
                           </div>
 
                         </div>
-                      )
-                    )}
+                      ))}
 
-                    {(comments[post.id] || []).length ===
-                      0 && (
-                      <p className="text-sm text-slate-500">
-                        No comments yet. Be the first!
-                      </p>
-                    )}
+                      {(comments[post.id] || []).length === 0 && (
+                        <p className="text-sm text-slate-500">
+                          No comments yet. Be the first!
+                        </p>
+                      )}
 
-                  </div>
+                    </div>
 
-                  {/* Add comment */}
-                  <div className="mt-5 flex gap-3">
+                    {/* Add Comment */}
+                    <div className="mt-5 flex gap-3">
 
-                    <input
-                      type="text"
-                      value={
-                        commentText[post.id] || ""
-                      }
-                      onChange={(e) =>
-                        setCommentText(
-                          (current) => ({
+                      <input
+                        type="text"
+                        value={commentText[post.id] || ""}
+                        onChange={(e) =>
+                          setCommentText((current) => ({
                             ...current,
-                            [post.id]:
-                              e.target.value,
-                          })
-                        )
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          addComment(post.id);
+                            [post.id]: e.target.value,
+                          }))
                         }
-                      }}
-                      placeholder="Write a comment..."
-                      className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                    />
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            addComment(post.id);
+                          }
+                        }}
+                        placeholder="Write a comment..."
+                        className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                      />
 
-                    <button
-                      onClick={() =>
-                        addComment(post.id)
-                      }
-                      className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
-                    >
-                      Comment
-                    </button>
+                      <button
+                        onClick={() => addComment(post.id)}
+                        className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
+                      >
+                        Comment
+                      </button>
+
+                    </div>
 
                   </div>
+                )}
 
-                </div>
-              )}
+              </article>
+            ))}
 
-            </article>
-          ))}
-
-        </div>
+          </div>
+        )}
 
       </section>
-
     </main>
   );
 }

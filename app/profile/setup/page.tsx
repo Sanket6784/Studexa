@@ -48,16 +48,19 @@ export default function ProfileSetupPage() {
         setFullName(data.full_name || "");
         setCollege(data.college || "");
         setBranch(data.branch || "");
+
         setGraduationYear(
           data.graduation_year
             ? String(data.graduation_year)
             : ""
         );
+
         setSkills(
           Array.isArray(data.skills)
             ? data.skills.join(", ")
             : ""
         );
+
         setBio(data.bio || "");
       } else if (user.user_metadata?.full_name) {
         setFullName(user.user_metadata.full_name);
@@ -160,32 +163,72 @@ export default function ProfileSetupPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-lg font-bold text-slate-900">
-          Loading your profile...
-        </p>
+      <main className="flex min-h-screen items-center justify-center bg-[#050b24] text-white">
+        <div className="text-center">
+
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" />
+
+          <p className="mt-5 font-bold text-slate-400">
+            Loading your profile...
+          </p>
+
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900">
+    <main className="relative min-h-screen overflow-hidden bg-[#050b24] text-white">
 
-      <div className="mx-auto max-w-2xl">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute left-[-180px] top-[-180px] h-[500px] w-[500px] rounded-full bg-blue-600/20 blur-[140px]" />
+
+      <div className="pointer-events-none absolute right-[-200px] bottom-[-200px] h-[550px] w-[550px] rounded-full bg-cyan-500/10 blur-[150px]" />
+
+      {/* Navbar */}
+      <nav className="relative z-10 border-b border-white/10 bg-[#050b24]/80 backdrop-blur-xl">
+
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+
+          <button
+            onClick={() => router.push("/")}
+            className="text-2xl font-black tracking-tight"
+          >
+            Studexa<span className="text-blue-500">.</span>
+          </button>
+
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            Dashboard
+          </button>
+
+        </div>
+
+      </nav>
+
+      {/* Content */}
+      <section className="relative z-10 mx-auto max-w-4xl px-6 py-12 md:py-16">
 
         {/* Header */}
         <div className="text-center">
 
-          <p className="text-sm font-bold tracking-widest text-blue-600">
-            WELCOME TO STUDEXA
-          </p>
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-4 py-2 text-xs font-extrabold tracking-widest text-blue-300">
+            <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+            YOUR STUDENT IDENTITY
+          </div>
 
-          <h1 className="mt-2 text-4xl font-extrabold text-slate-950">
-            Build your student profile
+          <h1 className="mt-6 text-4xl font-black tracking-tight md:text-5xl">
+            Build your{" "}
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              profile.
+            </span>
           </h1>
 
-          <p className="mt-3 text-lg text-slate-600">
-            Tell other students who you are and what you're building.
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-slate-400">
+            Tell other students who you are, what you know,
+            and what you're interested in building.
           </p>
 
         </div>
@@ -193,78 +236,58 @@ export default function ProfileSetupPage() {
         {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="mt-10 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+          className="mt-10 rounded-3xl border border-white/10 bg-white/[0.055] p-7 shadow-2xl shadow-black/20 backdrop-blur-xl md:p-9"
         >
 
-          {/* Full Name + College */}
-          <div className="grid gap-6 md:grid-cols-2">
+          {/* Section heading */}
+          <div className="mb-8">
 
-            <div>
-              <label
-                htmlFor="fullName"
-                className="mb-2 block text-sm font-bold text-slate-800"
-              >
-                Full name
-              </label>
+            <p className="text-xs font-extrabold tracking-widest text-blue-400">
+              BASIC INFORMATION
+            </p>
 
-              <input
-                id="fullName"
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Your full name"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
+            <h2 className="mt-2 text-2xl font-black">
+              Tell us about yourself
+            </h2>
 
-            <div>
-              <label
-                htmlFor="college"
-                className="mb-2 block text-sm font-bold text-slate-800"
-              >
-                College
-              </label>
+          </div>
 
-              <input
-                id="college"
-                type="text"
-                required
-                value={college}
-                onChange={(e) => setCollege(e.target.value)}
-                placeholder="Your college"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
+          {/* Name + College */}
+          <div className="grid gap-5 md:grid-cols-2">
+
+            <InputField
+              id="fullName"
+              label="Full name"
+              value={fullName}
+              onChange={setFullName}
+              placeholder="Your full name"
+            />
+
+            <InputField
+              id="college"
+              label="College"
+              value={college}
+              onChange={setCollege}
+              placeholder="Your college"
+            />
 
           </div>
 
           {/* Branch + Graduation */}
-          <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
 
-            <div>
-              <label
-                htmlFor="branch"
-                className="mb-2 block text-sm font-bold text-slate-800"
-              >
-                Branch
-              </label>
-
-              <input
-                id="branch"
-                type="text"
-                required
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-                placeholder="Computer Science Engineering"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
+            <InputField
+              id="branch"
+              label="Branch"
+              value={branch}
+              onChange={setBranch}
+              placeholder="Computer Science Engineering"
+            />
 
             <div>
               <label
                 htmlFor="graduationYear"
-                className="mb-2 block text-sm font-bold text-slate-800"
+                className="mb-2 block text-sm font-bold text-slate-200"
               >
                 Graduation year
               </label>
@@ -280,18 +303,18 @@ export default function ProfileSetupPage() {
                   setGraduationYear(e.target.value)
                 }
                 placeholder="2027"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 text-white placeholder:text-slate-500 outline-none transition focus:border-blue-500 focus:bg-white/[0.08] focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
           </div>
 
           {/* Skills */}
-          <div className="mt-6">
+          <div className="mt-5">
 
             <label
               htmlFor="skills"
-              className="mb-2 block text-sm font-bold text-slate-800"
+              className="mb-2 block text-sm font-bold text-slate-200"
             >
               Skills
             </label>
@@ -303,7 +326,7 @@ export default function ProfileSetupPage() {
               value={skills}
               onChange={(e) => setSkills(e.target.value)}
               placeholder="Java, Python, React, DSA"
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 text-white placeholder:text-slate-500 outline-none transition focus:border-blue-500 focus:bg-white/[0.08] focus:ring-2 focus:ring-blue-500/20"
             />
 
             <p className="mt-2 text-xs font-medium text-slate-500">
@@ -313,11 +336,11 @@ export default function ProfileSetupPage() {
           </div>
 
           {/* Bio */}
-          <div className="mt-6">
+          <div className="mt-5">
 
             <label
               htmlFor="bio"
-              className="mb-2 block text-sm font-bold text-slate-800"
+              className="mb-2 block text-sm font-bold text-slate-200"
             >
               Bio
             </label>
@@ -327,20 +350,43 @@ export default function ProfileSetupPage() {
               required
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us a little about yourself..."
+              placeholder="Tell us about yourself, your interests and what you're building..."
               rows={5}
-              className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-medium leading-7 text-slate-950 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 leading-7 text-white placeholder:text-slate-500 outline-none transition focus:border-blue-500 focus:bg-white/[0.08] focus:ring-2 focus:ring-blue-500/20"
             />
 
             <p className="mt-2 text-xs font-medium text-slate-500">
-              Keep it short and tell people what you're interested in.
+              Keep it short and make it interesting.
             </p>
+
+          </div>
+
+          {/* Preview */}
+          <div className="mt-8 rounded-2xl border border-blue-400/10 bg-blue-500/[0.04] p-5">
+
+            <div className="flex items-center gap-3">
+
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+                ✦
+              </div>
+
+              <div>
+                <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                  PROFILE PREVIEW
+                </p>
+
+                <p className="mt-1 text-sm text-slate-400">
+                  Your information will appear on your public profile.
+                </p>
+              </div>
+
+            </div>
 
           </div>
 
           {/* Error */}
           {error && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            <div className="mt-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm font-semibold text-red-300">
               {error}
             </div>
           )}
@@ -349,7 +395,7 @@ export default function ProfileSetupPage() {
           <button
             type="submit"
             disabled={saving}
-            className="mt-8 w-full rounded-xl bg-blue-600 px-6 py-4 text-base font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-7 w-full rounded-xl bg-blue-600 px-6 py-4 text-base font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 hover:shadow-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving
               ? "Saving your profile..."
@@ -358,8 +404,45 @@ export default function ProfileSetupPage() {
 
         </form>
 
-      </div>
+      </section>
 
     </main>
+  );
+}
+
+function InputField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+
+      <label
+        htmlFor={id}
+        className="mb-2 block text-sm font-bold text-slate-200"
+      >
+        {label}
+      </label>
+
+      <input
+        id={id}
+        type="text"
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 text-white placeholder:text-slate-500 outline-none transition focus:border-blue-500 focus:bg-white/[0.08] focus:ring-2 focus:ring-blue-500/20"
+      />
+
+    </div>
   );
 }

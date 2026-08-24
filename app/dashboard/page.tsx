@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
 type Profile = {
   id: string;
-  full_name: string;
+  full_name: string | null;
+  avatar_url: string | null;
   college: string | null;
   branch: string | null;
   graduation_year: number | null;
@@ -21,434 +22,645 @@ type Project = {
   technologies: string[] | null;
 };
 
+type Article = {
+  id: string;
+  title: string;
+  content: string;
+  category: string | null;
+  created_at: string;
+};
+
+type Student = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  college: string | null;
+  branch: string | null;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
 
+  const [userId, setUserId] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    async function loadDashboard() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+    loadDashboard();
+  }, []);
 
-      if (!user) {
-        router.push("/login");
-        return;
-      }
+  async function loadDashboard() {
+    setLoading(true);
+    setError("");
 
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-      if (profileError) {
-        console.error(profileError);
-      } else {
-        setProfile(profileData);
-      }
-
-      const { data: projectData, error: projectError } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(3);
-
-      if (projectError) {
-        console.error(projectError);
-      } else {
-        setProjects(projectData || []);
-      }
-
-      setLoading(false);
+    if (!user) {
+      router.replace("/login");
+      return;
     }
 
-    loadDashboard();
-  }, [router]);
+    setUserId(user.id);
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/");
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select(
+        "id, full_name, avatar_url, college, branch, graduation_year, bio, skills"
+      )
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("PROFILE ERROR:", profileError);
+      setError("Could not load your profile.");
+    }
+
+    setProfile(profileData || null);
+
+    const { data: projectData, error: projectError } = await supabase
+      .from("projects")
+      .select("id, title, description, technologies")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    if (projectError) {
+      console.error("PROJECT ERROR:", projectError);
+    }
+
+    setProjects(projectData || []);
+
+    const { data: articleData, error: articleError } = await supabase
+      .from("posts")
+      .select("id, title, content, category, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(3);
+
+    if (articleError) {
+      console.error("ARTICLE ERROR:", articleError);
+    }
+
+    setArticles(articleData || []);
+
+    const { data: studentData, error: studentError } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, college, branch")
+      .neq("id", user.id)
+      .order("full_name", { ascending: true })
+      .limit(6);
+
+    if (studentError) {
+      console.error("STUDENT ERROR:", studentError);
+    }
+
+    setStudents(studentData || []);
+
+    setLoading(false);
   }
+
+  async function logout() {
+    setLoggingOut(true);
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error(error);
+      setLoggingOut(false);
+      return;
+    }
+
+    router.replace("/login");
+  }
+
+  const profileCompletion = useMemo(() => {
+    if (!profile) return 0;
+
+    const fields = [
+      profile.full_name,
+      profile.avatar_url,
+      profile.college,
+      profile.branch,
+      profile.graduation_year,
+      profile.bio,
+      profile.skills && profile.skills.length > 0,
+    ];
+
+    const completed = fields.filter(Boolean).length;
+
+    return Math.round((completed / fields.length) * 100);
+  }, [profile]);
+
+  const firstName =
+    profile?.full_name?.trim().split(" ")[0] || "Student";
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="text-lg font-bold text-slate-900">
-          Loading dashboard...
-        </p>
+      <main className="flex min-h-screen items-center justify-center bg-[#050b1f] text-white">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" />
+
+          <p className="mt-5 font-bold text-slate-400">
+            Loading your dashboard...
+          </p>
+        </div>
       </main>
     );
   }
 
-  const firstName = profile?.full_name
-    ? profile.full_name.split(" ")[0]
-    : "Student";
-
-  const profileFields = [
-    profile?.full_name,
-    profile?.college,
-    profile?.branch,
-    profile?.graduation_year,
-    profile?.bio,
-    profile?.skills && profile.skills.length > 0,
-  ];
-
-  const completedFields = profileFields.filter(Boolean).length;
-
-  const completionPercentage = Math.round(
-    (completedFields / profileFields.length) * 100
-  );
-
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="min-h-screen bg-[#050b1f] text-white">
+
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-200px] top-[-150px] h-[600px] w-[600px] rounded-full bg-blue-600/15 blur-[150px]" />
+
+        <div className="absolute right-[-200px] top-[20%] h-[600px] w-[600px] rounded-full bg-cyan-500/10 blur-[150px]" />
+
+        <div className="absolute bottom-[-250px] left-[30%] h-[500px] w-[500px] rounded-full bg-indigo-600/10 blur-[150px]" />
+      </div>
 
       {/* Navbar */}
-      <nav className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+      <nav className="relative z-10 border-b border-white/10 bg-[#050b1f]/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5">
 
           <button
             onClick={() => router.push("/dashboard")}
-            className="text-2xl font-extrabold text-slate-950"
+            className="text-2xl font-black tracking-tight"
           >
-            Studexa<span className="text-blue-600">.</span>
+            Studexa<span className="text-blue-500">.</span>
           </button>
 
-          <div className="flex items-center gap-3">
-
-            {profile?.id && (
-              <button
-                onClick={() => router.push(`/profile/${profile.id}`)}
-                className="hidden rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 sm:block"
-              >
-                View Profile
-              </button>
-            )}
+          <div className="flex items-center gap-2">
 
             <button
-              onClick={() => router.push("/students")}
-              className="hidden rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 sm:block"
+              onClick={() => router.push(`/profile/${userId}`)}
+              className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white sm:block"
             >
-              Students
+              My Profile
             </button>
 
             <button
-              onClick={() => router.push("/articles")}
-              className="hidden rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50 md:block"
+              onClick={logout}
+              disabled={loggingOut}
+              className="rounded-xl border border-red-400/10 bg-red-500/5 px-3 py-2.5 text-sm font-bold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50 sm:px-4"
             >
-              Articles
-            </button>
-
-            <button
-              onClick={() => router.push("/community")}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-50"
-            >
-              Community
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
-            >
-              Log out
+              {loggingOut ? "Logging out..." : "Logout"}
             </button>
 
           </div>
+
         </div>
       </nav>
 
-      {/* Main */}
-      <section className="mx-auto max-w-7xl px-6 py-10">
+      {/* Content */}
+      <section className="relative z-10 mx-auto max-w-7xl px-5 py-8 sm:px-6 md:py-12">
 
         {/* Welcome */}
-        <div>
-          <p className="text-sm font-bold tracking-widest text-blue-600">
-            DASHBOARD
-          </p>
+        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
 
-          <h1 className="mt-2 text-4xl font-extrabold text-slate-950">
-            Welcome back, {firstName} 👋
-          </h1>
+          <div>
+            <p className="text-sm font-bold tracking-widest text-blue-400">
+              STUDEXA DASHBOARD
+            </p>
 
-          <p className="mt-3 text-lg text-slate-600">
-            Build your student identity and showcase what you can do.
-          </p>
+            <h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">
+              Welcome, {firstName}.
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
+              Manage your student profile, projects and community activity
+              from one place.
+            </p>
+          </div>
+
+          <button
+            onClick={() => router.push(`/profile/${userId}`)}
+            className="w-full rounded-xl bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500 md:w-auto"
+          >
+            View My Profile →
+          </button>
+
         </div>
 
-        {/* Profile Completion */}
-        <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-
-            <div>
-              <p className="text-sm font-bold text-slate-500">
-                PROFILE COMPLETION
-              </p>
-
-              <h2 className="mt-1 text-2xl font-extrabold text-slate-950">
-                {completionPercentage}% complete
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-600">
-                Keep building your profile to make it stronger.
-              </p>
-            </div>
-
-            <button
-              onClick={() => router.push("/profile/setup")}
-              className="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
-            >
-              Edit Profile
-            </button>
-
+        {/* Error */}
+        {error && (
+          <div className="mt-6 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 font-semibold text-red-300">
+            {error}
           </div>
+        )}
 
-          <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className="h-full rounded-full bg-blue-600 transition-all"
-              style={{ width: `${completionPercentage}%` }}
-            />
-          </div>
+        {/* Stats */}
+        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+
+          <button
+            onClick={() => router.push(`/profile/${userId}`)}
+            className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-left backdrop-blur-xl transition hover:border-blue-400/20 hover:bg-white/[0.06]"
+          >
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Profile
+            </p>
+
+            <p className="mt-2 text-3xl font-black text-blue-400">
+              {profileCompletion}%
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Complete
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push(`/profile/${userId}`)}
+            className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-left backdrop-blur-xl transition hover:border-blue-400/20 hover:bg-white/[0.06]"
+          >
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Projects
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {projects.length}
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Your projects
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push("/community")}
+            className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-left backdrop-blur-xl transition hover:border-blue-400/20 hover:bg-white/[0.06]"
+          >
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Articles
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {articles.length}
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Published
+            </p>
+          </button>
+
+          <button
+            onClick={() => router.push("/students")}
+            className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-left backdrop-blur-xl transition hover:border-blue-400/20 hover:bg-white/[0.06]"
+          >
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Network
+            </p>
+
+            <p className="mt-2 text-3xl font-black">
+              {students.length}
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Students shown
+            </p>
+          </button>
 
         </div>
 
         {/* Quick Actions */}
         <div className="mt-8">
 
-          <p className="text-sm font-bold tracking-widest text-blue-600">
-            QUICK ACTIONS
-          </p>
+          <div className="mb-4">
+            <p className="text-xs font-extrabold tracking-widest text-blue-400">
+              QUICK ACTIONS
+            </p>
 
-          <div className="mt-4 grid gap-5 md:grid-cols-4">
+            <h2 className="mt-1 text-2xl font-black">
+              What do you want to do?
+            </h2>
+          </div>
 
-            {/* Profile */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
             <button
-              onClick={() =>
-                profile?.id && router.push(`/profile/${profile.id}`)
-              }
-              className="group rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+              onClick={() => router.push(`/profile/${userId}`)}
+              className="group rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-left transition hover:-translate-y-1 hover:border-blue-400/20 hover:bg-white/[0.07]"
             >
-              <div className="text-3xl">👤</div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-xl">
+                👤
+              </div>
 
-              <h2 className="mt-4 text-xl font-extrabold text-slate-950">
+              <h3 className="mt-4 font-black">
                 My Profile
-              </h2>
+              </h3>
 
-              <p className="mt-2 text-slate-600">
-                View your public Studexa profile.
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                View and manage your student identity.
               </p>
 
-              <p className="mt-4 font-bold text-blue-600">
-                View profile →
+              <p className="mt-4 text-sm font-bold text-blue-400 group-hover:text-blue-300">
+                Open profile →
               </p>
             </button>
 
-            {/* Projects */}
             <button
-              onClick={() => router.push("/projects")}
-              className="group rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+              onClick={() => router.push("/students")}
+              className="group rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-left transition hover:-translate-y-1 hover:border-blue-400/20 hover:bg-white/[0.07]"
             >
-              <div className="text-3xl">💻</div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-xl">
+                👥
+              </div>
 
-              <h2 className="mt-4 text-xl font-extrabold text-slate-950">
-                My Projects
-              </h2>
+              <h3 className="mt-4 font-black">
+                Discover Students
+              </h3>
 
-              <p className="mt-2 text-slate-600">
-                Showcase the projects you have built.
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Explore students and their profiles.
               </p>
 
-              <p className="mt-4 font-bold text-blue-600">
-                Manage projects →
+              <p className="mt-4 text-sm font-bold text-blue-400 group-hover:text-blue-300">
+                Browse students →
               </p>
             </button>
 
-            {/* Articles */}
-            <button
-              onClick={() => router.push("/articles")}
-              className="group rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-            >
-              <div className="text-3xl">📝</div>
-
-              <h2 className="mt-4 text-xl font-extrabold text-slate-950">
-                Articles
-              </h2>
-
-              <p className="mt-2 text-slate-600">
-                Read and publish articles from students.
-              </p>
-
-              <p className="mt-4 font-bold text-blue-600">
-                Explore articles →
-              </p>
-            </button>
-
-            {/* Community */}
             <button
               onClick={() => router.push("/community")}
-              className="group rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+              className="group rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-left transition hover:-translate-y-1 hover:border-blue-400/20 hover:bg-white/[0.07]"
             >
-              <div className="text-3xl">🌐</div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10 text-xl">
+                📝
+              </div>
 
-              <h2 className="mt-4 text-xl font-extrabold text-slate-950">
+              <h3 className="mt-4 font-black">
                 Community
-              </h2>
+              </h3>
 
-              <p className="mt-2 text-slate-600">
-                Read, like and discuss student content.
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Read and share student knowledge.
               </p>
 
-              <p className="mt-4 font-bold text-blue-600">
-                Explore community →
+              <p className="mt-4 text-sm font-bold text-blue-400 group-hover:text-blue-300">
+                Open community →
+              </p>
+            </button>
+
+            <button
+              onClick={() => router.push("/community/new")}
+              className="group rounded-2xl border border-blue-500/20 bg-blue-500/[0.08] p-5 text-left transition hover:-translate-y-1 hover:bg-blue-500/[0.12]"
+            >
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-xl">
+                ✍️
+              </div>
+
+              <h3 className="mt-4 font-black">
+                Write Article
+              </h3>
+
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Share what you have learned.
+              </p>
+
+              <p className="mt-4 text-sm font-bold text-blue-400 group-hover:text-blue-300">
+                Start writing →
               </p>
             </button>
 
           </div>
         </div>
 
-        {/* Profile Summary */}
-        {profile && (
-          <div className="mt-10 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+        {/* Main Grid */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
 
-            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+          {/* Recent Projects */}
+          <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl lg:col-span-2 sm:p-8">
+
+            <div className="flex items-center justify-between">
 
               <div>
-                <p className="text-sm font-bold tracking-widest text-blue-600">
-                  YOUR PROFILE
+                <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                  YOUR WORK
                 </p>
 
-                <h2 className="mt-2 text-2xl font-extrabold text-slate-950">
-                  {profile.full_name}
+                <h2 className="mt-1 text-2xl font-black">
+                  Recent projects
                 </h2>
-
-                <p className="mt-2 text-slate-600">
-                  {profile.branch || "Student"}
-                  {profile.college && ` • ${profile.college}`}
-                </p>
-
-                {profile.graduation_year && (
-                  <p className="mt-1 text-sm text-slate-500">
-                    Class of {profile.graduation_year}
-                  </p>
-                )}
               </div>
 
               <button
-                onClick={() => router.push("/profile/setup")}
-                className="rounded-xl border border-slate-300 px-4 py-2 font-bold text-slate-800 hover:bg-slate-50"
+                onClick={() => router.push(`/profile/${userId}`)}
+                className="text-sm font-bold text-blue-400 hover:text-blue-300"
               >
-                Edit
+                View all →
               </button>
 
             </div>
 
-            {profile.bio && (
-              <p className="mt-5 max-w-3xl leading-7 text-slate-600">
-                {profile.bio}
-              </p>
-            )}
+            {projects.length === 0 ? (
+              <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center">
 
-            {profile.skills && profile.skills.length > 0 && (
-              <div className="mt-5 flex flex-wrap gap-2">
-                {profile.skills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700"
+                <div className="text-3xl">🚀</div>
+
+                <p className="mt-3 font-bold text-slate-400">
+                  You haven't added any projects yet.
+                </p>
+
+                <button
+                  onClick={() => router.push("/profile/edit")}
+                  className="mt-4 text-sm font-bold text-blue-400 hover:text-blue-300"
+                >
+                  Add your first project →
+                </button>
+
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"
                   >
-                    {skill}
-                  </span>
+                    <h3 className="font-black">
+                      {project.title}
+                    </h3>
+
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                      {project.description || "No description added."}
+                    </p>
+
+                    {project.technologies &&
+                      project.technologies.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {project.technologies.slice(0, 4).map((technology) => (
+                            <span
+                              key={technology}
+                              className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-bold text-blue-300"
+                            >
+                              {technology}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                  </div>
                 ))}
+
               </div>
             )}
 
           </div>
-        )}
 
-        {/* Recent Projects */}
-        <div className="mt-10">
+          {/* Profile Progress */}
+          <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
 
-          <div className="flex items-end justify-between">
+            <p className="text-xs font-extrabold tracking-widest text-blue-400">
+              YOUR PROFILE
+            </p>
+
+            <h2 className="mt-1 text-2xl font-black">
+              Profile strength
+            </h2>
+
+            <div className="mt-7 flex items-center justify-center">
+
+              <div className="relative flex h-40 w-40 items-center justify-center rounded-full border-[10px] border-white/10">
+
+                <div
+                  className="absolute inset-[-10px] rounded-full border-[10px] border-blue-500"
+                  style={{
+                    clipPath:
+                      "polygon(0 0, 100% 0, 100% 100%, 0 100%)",
+                    opacity: profileCompletion > 0 ? 1 : 0,
+                  }}
+                />
+
+                <div className="text-center">
+                  <p className="text-4xl font-black text-blue-400">
+                    {profileCompletion}%
+                  </p>
+
+                  <p className="text-xs font-bold text-slate-500">
+                    complete
+                  </p>
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="mt-7">
+
+              {profileCompletion >= 100 ? (
+                <div className="rounded-2xl bg-emerald-500/10 p-4">
+                  <p className="font-bold text-emerald-400">
+                    ✓ Profile complete
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your profile is ready to represent you.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-blue-500/10 p-4">
+                  <p className="font-bold text-blue-400">
+                    Keep improving your profile
+                  </p>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    Add missing information to make your profile stronger.
+                  </p>
+
+                  <button
+                    onClick={() => router.push("/profile/edit")}
+                    className="mt-3 text-sm font-bold text-blue-400 hover:text-blue-300"
+                  >
+                    Edit profile →
+                  </button>
+                </div>
+              )}
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* Articles */}
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
+
+          <div className="flex items-center justify-between">
 
             <div>
-              <p className="text-sm font-bold tracking-widest text-blue-600">
-                PROJECTS
+              <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                COMMUNITY
               </p>
 
-              <h2 className="mt-1 text-3xl font-extrabold text-slate-950">
-                Your recent projects
+              <h2 className="mt-1 text-2xl font-black">
+                Your recent articles
               </h2>
             </div>
 
             <button
-              onClick={() => router.push("/projects")}
-              className="font-bold text-blue-600 hover:text-blue-700"
+              onClick={() => router.push("/community")}
+              className="text-sm font-bold text-blue-400 hover:text-blue-300"
             >
-              View all →
+              Community →
             </button>
 
           </div>
 
-          {projects.length === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          {articles.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center">
 
-              <div className="text-4xl">💻</div>
+              <div className="text-3xl">📝</div>
 
-              <h3 className="mt-4 text-xl font-extrabold text-slate-950">
-                No projects yet
-              </h3>
-
-              <p className="mt-2 text-slate-600">
-                Add your first project and start building your portfolio.
+              <p className="mt-3 font-bold text-slate-400">
+                You haven't published an article yet.
               </p>
 
               <button
-                onClick={() => router.push("/projects/new")}
-                className="mt-5 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
+                onClick={() => router.push("/community/new")}
+                className="mt-4 text-sm font-bold text-blue-400 hover:text-blue-300"
               >
-                Add Project →
+                Write your first article →
               </button>
 
             </div>
           ) : (
-            <div className="mt-5 grid gap-5 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
 
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              {articles.map((article) => (
+                <button
+                  key={article.id}
+                  onClick={() => router.push(`/community/${article.id}`)}
+                  className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 text-left transition hover:border-blue-400/20 hover:bg-white/[0.05]"
                 >
 
-                  <h3 className="text-xl font-extrabold text-slate-950">
-                    {project.title}
+                  <span className="rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-bold text-blue-300">
+                    {article.category || "Engineering"}
+                  </span>
+
+                  <h3 className="mt-4 line-clamp-2 font-black">
+                    {article.title}
                   </h3>
 
-                  {project.description && (
-                    <p className="mt-3 line-clamp-3 leading-6 text-slate-600">
-                      {project.description}
-                    </p>
-                  )}
+                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                    {article.content}
+                  </p>
 
-                  {project.technologies &&
-                    project.technologies.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
+                  <p className="mt-4 text-xs font-bold text-slate-600">
+                    {new Date(article.created_at).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
 
-                        {project.technologies.map((technology) => (
-                          <span
-                            key={technology}
-                            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700"
-                          >
-                            {technology}
-                          </span>
-                        ))}
-
-                      </div>
-                    )}
-
-                </div>
+                </button>
               ))}
 
             </div>
@@ -456,44 +668,105 @@ export default function DashboardPage() {
 
         </div>
 
-        {/* Articles CTA */}
-        <div className="mt-10 rounded-3xl bg-slate-950 px-8 py-12 text-center">
+        {/* Students */}
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
 
-          <p className="text-sm font-bold tracking-widest text-blue-400">
-            STUDENT ARTICLES
-          </p>
+          <div className="flex items-center justify-between">
 
-          <h2 className="mt-3 text-3xl font-extrabold text-white">
-            Share what you learn.
-          </h2>
+            <div>
+              <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                NETWORK
+              </p>
 
-          <p className="mx-auto mt-3 max-w-2xl text-slate-300">
-            Write about what you build, learn and experience,
-            and share it with the Studexa community.
-          </p>
-
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <h2 className="mt-1 text-2xl font-black">
+                Discover students
+              </h2>
+            </div>
 
             <button
-              onClick={() => router.push("/articles/new")}
-              className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white hover:bg-blue-700"
+              onClick={() => router.push("/students")}
+              className="text-sm font-bold text-blue-400 hover:text-blue-300"
             >
-              Write an Article →
-            </button>
-
-            <button
-              onClick={() => router.push("/articles")}
-              className="rounded-xl border border-slate-600 px-6 py-3 font-bold text-white hover:bg-slate-800"
-            >
-              Read Articles
+              View all →
             </button>
 
           </div>
 
+          {students.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center">
+              <p className="text-slate-500">
+                No other students found yet.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+              {students.map((student) => (
+                <button
+                  key={student.id}
+                  onClick={() => router.push(`/profile/${student.id}`)}
+                  className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left transition hover:border-blue-400/20 hover:bg-white/[0.05]"
+                >
+
+                  {student.avatar_url ? (
+                    <img
+                      src={student.avatar_url}
+                      alt={student.full_name || "Student"}
+                      className="h-12 w-12 shrink-0 rounded-xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 font-black text-blue-400">
+                      {student.full_name?.charAt(0).toUpperCase() || "S"}
+                    </div>
+                  )}
+
+                  <div className="min-w-0">
+                    <p className="truncate font-black text-white">
+                      {student.full_name || "Studexa Student"}
+                    </p>
+
+                    <p className="mt-1 truncate text-sm text-slate-500">
+                      {student.branch ||
+                        student.college ||
+                        "Student"}
+                    </p>
+                  </div>
+
+                </button>
+              ))}
+
+            </div>
+          )}
+
+        </div>
+
+        {/* Footer actions */}
+        <div className="mt-8 flex flex-col gap-3 pb-8 sm:flex-row">
+
+          <button
+            onClick={() => router.push("/students")}
+            className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3.5 font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            👥 Students
+          </button>
+
+          <button
+            onClick={() => router.push("/community")}
+            className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3.5 font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            📝 Community
+          </button>
+
+          <button
+            onClick={() => router.push(`/profile/${userId}`)}
+            className="flex-1 rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white transition hover:bg-blue-500"
+          >
+            👤 My Profile
+          </button>
+
         </div>
 
       </section>
-
     </main>
   );
 }

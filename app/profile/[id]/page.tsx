@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
 type Profile = {
   id: string;
   full_name: string;
+  avatar_url: string | null;
   college: string | null;
   branch: string | null;
   graduation_year: number | null;
@@ -23,289 +24,611 @@ type Project = {
   live_url: string | null;
 };
 
-export default function PublicProfilePage() {
-  const params = useParams();
+export default function ProfilePage() {
   const router = useRouter();
+  const params = useParams();
 
-  const id = String(params.id || "");
+  const id = params?.id as string;
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    async function loadProfile() {
-      if (!id) {
-        setError("Invalid profile ID.");
-        setLoading(false);
-        return;
-      }
-
-      console.log("PROFILE PAGE ID:", id);
-
-      const { data, error: profileError } = await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, college, branch, graduation_year, bio, skills"
-        )
-        .eq("id", id)
-        .maybeSingle();
-
-      console.log("PROFILE DATA:", data);
-      console.log("PROFILE ERROR:", profileError);
-
-      if (profileError) {
-        setError(profileError.message);
-        setLoading(false);
-        return;
-      }
-
-      if (!data) {
-        setError("No profile found for this ID.");
-        setLoading(false);
-        return;
-      }
-
-      setProfile(data);
-
-      const { data: projectData, error: projectError } =
-        await supabase
-          .from("projects")
-          .select(
-            "id, title, description, technologies, github_url, live_url"
-          )
-          .eq("user_id", id)
-          .order("created_at", { ascending: false });
-
-      if (projectError) {
-        console.error("PROJECT ERROR:", projectError);
-      } else {
-        setProjects(projectData || []);
-      }
-
-      setLoading(false);
-    }
-
+    if (!id) return;
     loadProfile();
   }, [id]);
 
+  async function loadProfile() {
+    setLoading(true);
+    setNotFound(false);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    setCurrentUserId(user?.id || null);
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select(
+        "id, full_name, avatar_url, college, branch, graduation_year, bio, skills"
+      )
+      .eq("id", id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("PROFILE ERROR:", profileError);
+      setLoading(false);
+      return;
+    }
+
+    if (!profileData) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+
+    setProfile(profileData);
+
+    const { data: projectData, error: projectError } = await supabase
+      .from("projects")
+      .select(
+        "id, title, description, technologies, github_url, live_url"
+      )
+      .eq("user_id", id)
+      .order("created_at", { ascending: false });
+
+    if (projectError) {
+      console.error("PROJECT ERROR:", projectError);
+    } else {
+      setProjects(projectData || []);
+    }
+
+    setLoading(false);
+  }
+
+  const isOwnProfile = currentUserId === profile?.id;
+
+  const profileCompletion = useMemo(() => {
+    if (!profile) return 0;
+
+    const fields = [
+      profile.full_name,
+      profile.avatar_url,
+      profile.college,
+      profile.branch,
+      profile.graduation_year,
+      profile.bio,
+      profile.skills && profile.skills.length > 0,
+    ];
+
+    const completed = fields.filter(Boolean).length;
+
+    return Math.round((completed / fields.length) * 100);
+  }, [profile]);
+
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50">
-        <p className="font-bold text-slate-900">
-          Loading profile...
-        </p>
+      <main className="flex min-h-screen items-center justify-center bg-[#050b1f] text-white">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" />
+
+          <p className="mt-5 font-semibold text-slate-400">
+            Loading profile...
+          </p>
+        </div>
       </main>
     );
   }
 
-  if (error || !profile) {
+  if (notFound || !profile) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
-        <div className="max-w-lg rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
-
+      <main className="flex min-h-screen items-center justify-center bg-[#050b1f] px-6 text-white">
+        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.04] p-10 text-center shadow-2xl">
           <div className="text-5xl">👤</div>
 
-          <h1 className="mt-4 text-2xl font-extrabold text-slate-950">
-            Profile unavailable
+          <h1 className="mt-6 text-3xl font-black">
+            Profile not found
           </h1>
 
-          <p className="mt-3 text-slate-600">
-            {error || "Student profile not found."}
+          <p className="mt-3 leading-7 text-slate-400">
+            This student profile doesn't exist or is no longer available.
           </p>
 
           <button
             onClick={() => router.push("/students")}
-            className="mt-6 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700"
+            className="mt-7 w-full rounded-xl bg-blue-600 px-5 py-3.5 font-bold text-white transition hover:bg-blue-500"
           >
             Back to Students
           </button>
-
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="min-h-screen bg-[#050b1f] text-white">
 
-      <nav className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-200px] top-[-150px] h-[600px] w-[600px] rounded-full bg-blue-600/15 blur-[150px]" />
+
+        <div className="absolute right-[-200px] top-[20%] h-[600px] w-[600px] rounded-full bg-cyan-500/10 blur-[150px]" />
+
+        <div className="absolute bottom-[-250px] left-[30%] h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[150px]" />
+      </div>
+
+      {/* Navbar */}
+      <nav className="relative z-10 border-b border-white/10 bg-[#050b1f]/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-5 sm:px-6">
 
           <button
             onClick={() => router.push("/")}
-            className="text-2xl font-extrabold"
+            className="text-2xl font-black tracking-tight"
           >
-            Studexa<span className="text-blue-600">.</span>
+            Studexa<span className="text-blue-500">.</span>
           </button>
 
-          <div className="flex gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
 
             <button
               onClick={() => router.push("/students")}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 font-bold hover:bg-slate-50"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white sm:px-4"
             >
-              Students
+              ← Students
             </button>
+
+            {isOwnProfile && (
+              <button
+                onClick={() => router.push("/profile/edit")}
+                className="rounded-xl bg-blue-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500 sm:px-4"
+              >
+                Edit Profile
+              </button>
+            )}
 
             <button
               onClick={() => router.push("/dashboard")}
-              className="rounded-xl bg-slate-950 px-4 py-2 font-bold text-white hover:bg-slate-800"
+              className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/[0.08] hover:text-white sm:block"
             >
               Dashboard
             </button>
 
           </div>
-
         </div>
       </nav>
 
-      <section className="mx-auto max-w-6xl px-6 py-10">
+      {/* Main */}
+      <section className="relative z-10 mx-auto max-w-6xl px-5 py-8 sm:px-6 md:py-14">
 
-        <div className="rounded-3xl bg-slate-950 p-8 md:p-10">
+        {/* Hero */}
+        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.045] shadow-2xl backdrop-blur-xl">
 
-          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+          {/* Cover */}
+          <div className="relative h-32 overflow-hidden bg-gradient-to-r from-blue-600/30 via-blue-500/10 to-cyan-400/20 sm:h-48">
 
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-blue-600 text-4xl font-extrabold text-white">
-              {profile.full_name.charAt(0).toUpperCase()}
-            </div>
+            <div className="absolute -right-20 -top-32 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
 
-            <div>
-              <p className="text-sm font-bold tracking-widest text-blue-400">
-                STUDENT PROFILE
-              </p>
+            <div className="absolute -left-20 bottom-[-150px] h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
 
-              <h1 className="mt-2 text-4xl font-extrabold text-white">
-                {profile.full_name}
-              </h1>
+          </div>
 
-              <p className="mt-3 text-lg text-slate-300">
-                {profile.branch || "Student"}
-                {profile.college && ` • ${profile.college}`}
-              </p>
+          <div className="relative px-6 pb-8 sm:px-10">
 
-              {profile.graduation_year && (
-                <p className="mt-2 text-slate-400">
-                  Class of {profile.graduation_year}
-                </p>
+            {/* Avatar */}
+            <div className="-mt-16">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.full_name}
+                  className="h-32 w-32 rounded-3xl border-4 border-[#08102b] object-cover shadow-xl"
+                />
+              ) : (
+                <div className="flex h-32 w-32 items-center justify-center rounded-3xl border-4 border-[#08102b] bg-blue-500/10 text-5xl font-black text-blue-400 shadow-xl">
+                  {profile.full_name?.charAt(0).toUpperCase() || "S"}
+                </div>
               )}
             </div>
 
-          </div>
+            <div className="mt-6 flex flex-col justify-between gap-6 md:flex-row md:items-end">
 
-          {profile.bio && (
-            <p className="mt-8 max-w-3xl leading-7 text-slate-300">
-              {profile.bio}
-            </p>
-          )}
+              <div>
+                <h1 className="text-3xl font-black tracking-tight sm:text-5xl">
+                  {profile.full_name}
+                </h1>
 
-        </div>
+                {profile.branch && (
+                  <p className="mt-2 text-lg font-semibold text-blue-400">
+                    {profile.branch}
+                  </p>
+                )}
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                {profile.college && (
+                  <p className="mt-3 flex items-center gap-2 text-slate-400">
+                    <span>🎓</span>
+                    {profile.college}
+                  </p>
+                )}
 
-          <p className="text-sm font-bold tracking-widest text-blue-600">
-            SKILLS
-          </p>
+                {profile.graduation_year && (
+                  <p className="mt-2 text-sm font-semibold text-slate-500">
+                    Class of {profile.graduation_year}
+                  </p>
+                )}
+              </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-
-            {(profile.skills || []).map((skill) => (
-              <span
-                key={skill}
-                className="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700"
-              >
-                {skill}
-              </span>
-            ))}
-
-          </div>
-
-        </div>
-
-        <section className="mt-10">
-
-          <p className="text-sm font-bold tracking-widest text-blue-600">
-            PROJECTS
-          </p>
-
-          <h2 className="mt-2 text-3xl font-extrabold">
-            {profile.full_name.split(" ")[0]}'s projects
-          </h2>
-
-          {projects.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-              No projects added yet.
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-6 md:grid-cols-2">
-
-              {projects.map((project) => (
-                <article
-                  key={project.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              {isOwnProfile && (
+                <button
+                  onClick={() => router.push("/profile/edit")}
+                  className="w-full rounded-xl bg-blue-600 px-5 py-3 font-bold text-white transition hover:bg-blue-500 md:w-auto"
                 >
+                  Complete / Edit Profile
+                </button>
+              )}
 
-                  <h3 className="text-xl font-extrabold">
-                    {project.title}
-                  </h3>
+            </div>
 
-                  {project.description && (
-                    <p className="mt-3 leading-7 text-slate-600">
-                      {project.description}
-                    </p>
-                  )}
+          </div>
+        </div>
 
-                  {project.technologies &&
-                    project.technologies.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {project.technologies.map((technology) => (
-                          <span
-                            key={technology}
-                            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold"
-                          >
-                            {technology}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+        {/* Profile completion */}
+        {isOwnProfile && (
+          <div className="mt-6 rounded-3xl border border-blue-400/10 bg-blue-500/[0.06] p-5">
 
-                  <div className="mt-5 flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
-                    {project.github_url && (
-                      <a
-                        href={project.github_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-xl border border-slate-300 px-4 py-2 font-bold"
-                      >
-                        GitHub ↗
-                      </a>
-                    )}
+              <div>
+                <p className="text-sm font-black text-white">
+                  Profile completeness
+                </p>
 
-                    {project.live_url && (
-                      <a
-                        href={project.live_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white"
-                      >
-                        Live Demo ↗
-                      </a>
-                    )}
+                <p className="mt-1 text-xs text-slate-500">
+                  Complete your profile to make your student identity stronger.
+                </p>
+              </div>
 
+              <span className="text-lg font-black text-blue-400">
+                {profileCompletion}%
+              </span>
+
+            </div>
+
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-blue-500 transition-all"
+                style={{ width: `${profileCompletion}%` }}
+              />
+            </div>
+
+          </div>
+        )}
+
+        {/* Main Grid */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+
+          {/* Left */}
+          <div className="lg:col-span-2">
+
+            {/* About */}
+            <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
+
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
+                  👋
+                </div>
+
+                <div>
+                  <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                    ABOUT
+                  </p>
+
+                  <h2 className="text-xl font-black">
+                    About me
+                  </h2>
+                </div>
+
+              </div>
+
+              <p className="mt-6 whitespace-pre-wrap leading-8 text-slate-400">
+                {profile.bio || "This student hasn't added a bio yet."}
+              </p>
+
+            </div>
+
+            {/* Projects */}
+            <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
+
+              <div className="flex items-center justify-between">
+
+                <div className="flex items-center gap-3">
+
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
+                    🚀
                   </div>
 
-                </article>
-              ))}
+                  <div>
+                    <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                      WORK
+                    </p>
+
+                    <h2 className="text-xl font-black">
+                      Projects
+                    </h2>
+                  </div>
+
+                </div>
+
+                <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">
+                  {projects.length}
+                </span>
+
+              </div>
+
+              {projects.length === 0 ? (
+                <div className="mt-7 rounded-2xl border border-dashed border-white/10 p-8 text-center">
+
+                  <div className="text-3xl">🚀</div>
+
+                  <p className="mt-3 font-bold text-slate-400">
+                    No projects added yet.
+                  </p>
+
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => router.push("/profile/edit")}
+                      className="mt-4 text-sm font-bold text-blue-400 hover:text-blue-300"
+                    >
+                      Add your first project →
+                    </button>
+                  )}
+
+                </div>
+              ) : (
+                <div className="mt-7 space-y-5">
+
+                  {projects.map((project) => (
+                    <div
+                      key={project.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:border-blue-400/20 hover:bg-white/[0.04]"
+                    >
+
+                      <div className="flex flex-col justify-between gap-5">
+
+                        <div>
+                          <h3 className="text-xl font-extrabold">
+                            {project.title}
+                          </h3>
+
+                          <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-400">
+                            {project.description || "No description added."}
+                          </p>
+                        </div>
+
+                        {project.technologies &&
+                          project.technologies.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {project.technologies.map((technology) => (
+                                <span
+                                  key={technology}
+                                  className="rounded-full border border-blue-400/10 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-300"
+                                >
+                                  {technology}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                        <div className="flex flex-wrap gap-2">
+
+                          {project.github_url && (
+                            <a
+                              href={project.github_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                            >
+                              GitHub ↗
+                            </a>
+                          )}
+
+                          {project.live_url && (
+                            <a
+                              href={project.live_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500"
+                            >
+                              Live Demo ↗
+                            </a>
+                          )}
+
+                        </div>
+
+                      </div>
+
+                    </div>
+                  ))}
+
+                </div>
+              )}
 
             </div>
-          )}
+          </div>
 
-        </section>
+          {/* Right */}
+          <div className="space-y-6">
+
+            {/* Skills */}
+            <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
+
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
+                  ⚡
+                </div>
+
+                <div>
+                  <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                    EXPERTISE
+                  </p>
+
+                  <h2 className="text-xl font-black">
+                    Skills
+                  </h2>
+                </div>
+
+              </div>
+
+              {profile.skills && profile.skills.length > 0 ? (
+                <div className="mt-7 flex flex-wrap gap-2.5">
+                  {profile.skills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="rounded-xl border border-blue-400/10 bg-blue-500/10 px-3.5 py-2 text-sm font-bold text-blue-300"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-7 rounded-2xl border border-dashed border-white/10 p-5">
+                  <p className="text-sm leading-6 text-slate-500">
+                    No skills added yet.
+                  </p>
+
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => router.push("/profile/edit")}
+                      className="mt-3 text-sm font-bold text-blue-400 hover:text-blue-300"
+                    >
+                      Add skills →
+                    </button>
+                  )}
+                </div>
+              )}
+
+            </div>
+
+            {/* Education */}
+            <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
+
+              <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                EDUCATION
+              </p>
+
+              <h2 className="mt-2 text-xl font-black">
+                Academic profile
+              </h2>
+
+              <div className="mt-6 space-y-5">
+
+                {profile.college && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      College
+                    </p>
+
+                    <p className="mt-1 font-bold text-slate-200">
+                      {profile.college}
+                    </p>
+                  </div>
+                )}
+
+                {profile.branch && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Branch
+                    </p>
+
+                    <p className="mt-1 font-bold text-slate-200">
+                      {profile.branch}
+                    </p>
+                  </div>
+                )}
+
+                {profile.graduation_year && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Graduation
+                    </p>
+
+                    <p className="mt-1 font-bold text-slate-200">
+                      {profile.graduation_year}
+                    </p>
+                  </div>
+                )}
+
+                {!profile.college &&
+                  !profile.branch &&
+                  !profile.graduation_year && (
+                    <div className="rounded-2xl border border-dashed border-white/10 p-5">
+                      <p className="text-sm text-slate-500">
+                        No academic information added yet.
+                      </p>
+
+                      {isOwnProfile && (
+                        <button
+                          onClick={() => router.push("/profile/edit")}
+                          className="mt-3 text-sm font-bold text-blue-400 hover:text-blue-300"
+                        >
+                          Add education →
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+              </div>
+
+            </div>
+
+            {/* Profile actions */}
+            <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl">
+
+              <p className="text-xs font-extrabold tracking-widest text-blue-400">
+                STUDEXA
+              </p>
+
+              <h2 className="mt-2 text-xl font-black">
+                Explore more
+              </h2>
+
+              <div className="mt-5 space-y-2">
+
+                <button
+                  onClick={() => router.push("/students")}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                >
+                  👥 Discover students
+                </button>
+
+                <button
+                  onClick={() => router.push("/community")}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                >
+                  📝 Visit community
+                </button>
+
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-left text-sm font-bold text-white transition hover:bg-blue-500"
+                >
+                  🏠 Go to dashboard
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
 
       </section>
-
     </main>
   );
 }

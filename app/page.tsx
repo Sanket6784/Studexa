@@ -1,37 +1,44 @@
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-white text-slate-900">
+    <main className="min-h-screen overflow-hidden bg-slate-950 text-white">
+
+      {/* Background */}
+      <div className="pointer-events-none fixed inset-0 -z-0">
+        <div className="absolute left-1/2 top-[-300px] h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-blue-600/20 blur-[120px]" />
+        <div className="absolute right-[-200px] top-[500px] h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-[120px]" />
+        <div className="absolute bottom-[-200px] left-[-200px] h-[500px] w-[500px] rounded-full bg-indigo-600/10 blur-[120px]" />
+      </div>
 
       {/* Navbar */}
-      <nav className="border-b border-slate-200 bg-white">
+      <nav className="relative z-10 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
 
           <a
             href="/"
-            className="text-2xl font-extrabold text-slate-950"
+            className="text-2xl font-extrabold tracking-tight text-white"
           >
-            Studexa<span className="text-blue-600">.</span>
+            Studexa<span className="text-blue-500">.</span>
           </a>
 
           <div className="hidden items-center gap-8 md:flex">
 
             <a
               href="/community"
-              className="font-semibold text-slate-600 hover:text-blue-600"
+              className="font-semibold text-slate-300 transition hover:text-white"
             >
               Community
             </a>
 
             <a
               href="/login"
-              className="font-semibold text-slate-700 hover:text-blue-600"
+              className="font-semibold text-slate-300 transition hover:text-white"
             >
               Log in
             </a>
 
             <a
               href="/signup"
-              className="rounded-xl bg-blue-600 px-5 py-2.5 font-bold text-white hover:bg-blue-700"
+              className="rounded-xl border border-white/10 bg-white px-5 py-2.5 font-bold text-slate-950 shadow-lg shadow-blue-500/10 transition hover:bg-blue-50"
             >
               Get Started
             </a>
@@ -42,40 +49,40 @@ export default function HomePage() {
       </nav>
 
       {/* Hero */}
-      <section className="mx-auto max-w-7xl px-6 py-24 md:py-32">
+      <section className="relative z-10 mx-auto max-w-7xl px-6 pb-24 pt-20 md:pb-32 md:pt-28">
 
-        <div className="max-w-4xl">
+        <div className="mx-auto max-w-5xl text-center">
 
-          <div className="inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 backdrop-blur-xl">
+            <span className="h-2 w-2 rounded-full bg-blue-400" />
             Built for students 🚀
           </div>
 
-          <h1 className="mt-7 text-5xl font-extrabold leading-tight tracking-tight text-slate-950 md:text-7xl">
-            Your student identity,
-            <span className="text-blue-600">
-              {" "}beyond the resume.
+          <h1 className="mt-8 text-5xl font-black leading-[1.05] tracking-tight md:text-7xl lg:text-8xl">
+            Your student identity.
+            <span className="block bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500 bg-clip-text text-transparent">
+              Beyond the resume.
             </span>
           </h1>
 
-          <p className="mt-7 max-w-2xl text-xl leading-8 text-slate-600">
-            Build your professional profile, showcase projects,
-            share what you learn, connect with students and grow
-            your professional network.
+          <p className="mx-auto mt-7 max-w-2xl text-lg leading-8 text-slate-300 md:text-xl">
+            Build your professional profile, showcase your projects,
+            share what you learn, discover students and grow your network.
           </p>
 
           {/* Hero Buttons */}
-          <div className="mt-9 flex flex-wrap gap-4">
+          <div className="mt-9 flex flex-col justify-center gap-4 sm:flex-row">
 
             <a
               href="/signup"
-              className="inline-block rounded-xl bg-blue-600 px-7 py-4 text-lg font-bold text-white shadow-sm hover:bg-blue-700"
+              className="rounded-xl bg-blue-600 px-7 py-4 text-lg font-bold text-white shadow-xl shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
             >
               Create your profile →
             </a>
 
             <a
               href="/community"
-              className="inline-block rounded-xl border border-slate-300 bg-white px-7 py-4 text-lg font-bold text-slate-800 hover:bg-slate-50"
+              className="rounded-xl border border-white/10 bg-white/5 px-7 py-4 text-lg font-bold text-white backdrop-blur-xl transition hover:bg-white/10"
             >
               Explore community
             </a>
@@ -84,32 +91,87 @@ export default function HomePage() {
 
         </div>
 
+        {/* Hero Preview */}
+        <div className="mx-auto mt-20 max-w-5xl">
+
+          <div className="relative rounded-3xl border border-white/10 bg-white/[0.06] p-3 shadow-2xl shadow-blue-950/40 backdrop-blur-xl">
+
+            <div className="rounded-2xl border border-white/10 bg-slate-900/90 p-6 md:p-8">
+
+              <div className="flex items-center justify-between">
+
+                <div>
+                  <p className="text-sm font-semibold text-blue-400">
+                    STUDENT PROFILE
+                  </p>
+
+                  <h3 className="mt-2 text-2xl font-extrabold">
+                    Build. Share. Grow.
+                  </h3>
+                </div>
+
+                <div className="hidden h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-xl sm:flex">
+                  ✨
+                </div>
+
+              </div>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+
+                <PreviewCard
+                  title="Projects"
+                  value="Showcase"
+                  icon="💻"
+                />
+
+                <PreviewCard
+                  title="Community"
+                  value="Connect"
+                  icon="🌐"
+                />
+
+                <PreviewCard
+                  title="Skills"
+                  value="Grow"
+                  icon="🚀"
+                />
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
       </section>
 
       {/* Features */}
-      <section className="border-y border-slate-200 bg-slate-50">
-        <div className="mx-auto max-w-7xl px-6 py-20">
+      <section className="relative z-10 border-y border-white/10 bg-white/[0.02]">
+
+        <div className="mx-auto max-w-7xl px-6 py-24">
 
           <div className="max-w-2xl">
 
-            <p className="text-sm font-bold tracking-widest text-blue-600">
+            <p className="text-sm font-bold tracking-[0.2em] text-blue-400">
               EVERYTHING STUDENTS NEED
             </p>
 
-            <h2 className="mt-3 text-4xl font-extrabold text-slate-950">
+            <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
               Build more than a resume.
             </h2>
 
-            <p className="mt-4 text-lg text-slate-600">
-              Studexa brings your student journey into one
-              professional space.
+            <p className="mt-5 text-lg leading-8 text-slate-400">
+              Studexa brings your student journey into one professional space.
             </p>
 
           </div>
 
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
+          {/* Bento Grid */}
+          <div className="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
 
             <FeatureCard
+              large
               icon="👤"
               title="Student Profile"
               description="Create a professional identity with your education, skills, bio and achievements."
@@ -130,55 +192,67 @@ export default function HomePage() {
             <FeatureCard
               icon="🌐"
               title="Community"
-              description="Discover articles from students, interact through likes and comments, and connect."
+              description="Discover articles, interact with students and grow your network."
             />
 
             <FeatureCard
+              large
               icon="🚀"
               title="Grow Together"
-              description="Build your network and learn from students who are on the same journey."
+              description="Learn from students who are building, experimenting and growing just like you."
             />
 
           </div>
 
         </div>
+
       </section>
 
       {/* CTA */}
-      <section className="mx-auto max-w-7xl px-6 py-24">
+      <section className="relative z-10 mx-auto max-w-7xl px-6 py-24">
 
-        <div className="rounded-3xl bg-slate-950 px-8 py-16 text-center md:px-16">
+        <div className="relative overflow-hidden rounded-3xl border border-blue-400/20 bg-gradient-to-br from-blue-600/20 via-blue-500/10 to-transparent p-8 text-center backdrop-blur-xl md:p-16">
 
-          <h2 className="text-4xl font-extrabold text-white md:text-5xl">
-            Start building your student identity.
-          </h2>
+          <div className="absolute left-1/2 top-0 h-40 w-96 -translate-x-1/2 rounded-full bg-blue-500/20 blur-3xl" />
 
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-300">
-            Your projects, skills and ideas deserve
-            more than a single page on a resume.
-          </p>
+          <div className="relative">
 
-          <a
-            href="/signup"
-            className="mt-8 inline-block rounded-xl bg-blue-600 px-7 py-4 text-lg font-bold text-white hover:bg-blue-700"
-          >
-            Join Studexa →
-          </a>
+            <p className="text-sm font-bold tracking-[0.2em] text-blue-300">
+              YOUR JOURNEY STARTS HERE
+            </p>
+
+            <h2 className="mx-auto mt-4 max-w-3xl text-4xl font-black tracking-tight md:text-6xl">
+              Start building your student identity.
+            </h2>
+
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-300">
+              Your projects, skills and ideas deserve more than a single page
+              on a resume.
+            </p>
+
+            <a
+              href="/signup"
+              className="mt-8 inline-block rounded-xl bg-white px-7 py-4 text-lg font-bold text-slate-950 shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-50"
+            >
+              Join Studexa →
+            </a>
+
+          </div>
 
         </div>
 
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white">
+      <footer className="relative z-10 border-t border-white/10">
 
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-8 md:flex-row md:items-center md:justify-between">
 
           <a
             href="/"
-            className="font-extrabold text-slate-950"
+            className="font-extrabold text-white"
           >
-            Studexa<span className="text-blue-600">.</span>
+            Studexa<span className="text-blue-500">.</span>
           </a>
 
           <p className="text-sm text-slate-500">
@@ -197,26 +271,62 @@ function FeatureCard({
   icon,
   title,
   description,
+  large = false,
 }: {
   icon: string;
   title: string;
   description: string;
+  large?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm">
+    <div
+      className={`group rounded-3xl border border-white/10 bg-white/[0.05] p-7 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-400/20 hover:bg-white/[0.08] ${
+        large ? "lg:col-span-2" : ""
+      }`}
+    >
 
-      <div className="text-3xl">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-2xl">
         {icon}
       </div>
 
-      <h3 className="mt-5 text-xl font-extrabold text-slate-950">
+      <h3 className="mt-6 text-2xl font-extrabold text-white">
         {title}
       </h3>
 
-      <p className="mt-3 leading-7 text-slate-600">
+      <p className="mt-3 max-w-xl leading-7 text-slate-400">
         {description}
       </p>
 
+      <div className="mt-6 text-sm font-bold text-blue-400 opacity-0 transition group-hover:opacity-100">
+        Explore →
+      </div>
+
+    </div>
+  );
+}
+
+function PreviewCard({
+  title,
+  value,
+  icon,
+}: {
+  title: string;
+  value: string;
+  icon: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-slate-400">
+          {title}
+        </span>
+
+        <span>{icon}</span>
+      </div>
+
+      <p className="mt-3 text-xl font-extrabold text-white">
+        {value}
+      </p>
     </div>
   );
 }

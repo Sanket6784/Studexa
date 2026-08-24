@@ -30,11 +30,12 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Studexa" }],
   creator: "Studexa",
-  metadataBase: new URL("http://localhost:3000"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://studexa-indol.vercel.app"
+  ),
   openGraph: {
     title: "Studexa — Your Student Identity",
-    description:
-      "Build your student identity beyond the resume.",
+    description: "Build your student identity beyond the resume.",
     siteName: "Studexa",
     type: "website",
   },

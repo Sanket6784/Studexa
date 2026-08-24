@@ -57,11 +57,18 @@ export default function ProfilePage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    setCurrentUserId(user?.id || null);
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    setCurrentUserId(user.id);
 
     const { data: profileData, error: profileError } = await supabase
       .from("profiles")
-      .select("id, full_name, avatar_url, college, branch, graduation_year, bio, skills")
+      .select(
+        "id, full_name, avatar_url, college, branch, graduation_year, bio, skills"
+      )
       .eq("id", id)
       .maybeSingle();
 
@@ -83,11 +90,13 @@ export default function ProfilePage() {
       await Promise.all([
         supabase
           .from("projects")
-          .select("id, title, description, technologies, github_url, live_url")
+          .select(
+            "id, title, description, technologies, github_url, live_url"
+          )
           .eq("user_id", id)
           .order("created_at", { ascending: false }),
         supabase
-          .from("articles")
+          .from("posts")
           .select("id, title, content, category, created_at")
           .eq("user_id", id)
           .order("created_at", { ascending: false }),
@@ -225,13 +234,27 @@ export default function ProfilePage() {
 
             <div className="mt-6 flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <div>
-                <h1 className="text-3xl font-black tracking-tight sm:text-5xl">{profile.full_name}</h1>
-                {profile.branch && <p className="mt-2 text-lg font-semibold text-blue-400">{profile.branch}</p>}
-                {profile.college && (
-                  <p className="mt-3 flex items-center gap-2 text-slate-400"><span>🎓</span>{profile.college}</p>
+                <h1 className="text-3xl font-black tracking-tight sm:text-5xl">
+                  {profile.full_name}
+                </h1>
+
+                {profile.branch && (
+                  <p className="mt-2 text-lg font-semibold text-blue-400">
+                    {profile.branch}
+                  </p>
                 )}
+
+                {profile.college && (
+                  <p className="mt-3 flex items-center gap-2 text-slate-400">
+                    <span>🎓</span>
+                    {profile.college}
+                  </p>
+                )}
+
                 {profile.graduation_year && (
-                  <p className="mt-2 text-sm font-semibold text-slate-500">Class of {profile.graduation_year}</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-500">
+                    Class of {profile.graduation_year}
+                  </p>
                 )}
               </div>
 
@@ -252,12 +275,18 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black text-white">Profile completeness</p>
-                <p className="mt-1 text-xs text-slate-500">Complete your profile to make your student identity stronger.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Complete your profile to make your student identity stronger.
+                </p>
               </div>
               <span className="text-lg font-black text-blue-400">{profileCompletion}%</span>
             </div>
+
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${profileCompletion}%` }} />
+              <div
+                className="h-full rounded-full bg-blue-500 transition-all"
+                style={{ width: `${profileCompletion}%` }}
+              />
             </div>
           </div>
         )}
@@ -272,6 +301,7 @@ export default function ProfilePage() {
                   <h2 className="text-xl font-black">About me</h2>
                 </div>
               </div>
+
               <p className="mt-6 whitespace-pre-wrap leading-8 text-slate-400">
                 {profile.bio || "This student hasn't added a bio yet."}
               </p>
@@ -286,7 +316,10 @@ export default function ProfilePage() {
                     <h2 className="text-xl font-black">Projects</h2>
                   </div>
                 </div>
-                <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">{projects.length}</span>
+
+                <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">
+                  {projects.length}
+                </span>
               </div>
 
               {projects.length === 0 ? (
@@ -294,33 +327,63 @@ export default function ProfilePage() {
                   <div className="text-3xl">🚀</div>
                   <p className="mt-3 font-bold text-slate-400">No projects added yet.</p>
                   {isOwnProfile && (
-                    <button onClick={() => router.push("/profile/edit")} className="mt-4 text-sm font-bold text-blue-400 hover:text-blue-300">Add your first project →</button>
+                    <button
+                      onClick={() => router.push("/profile/edit")}
+                      className="mt-4 text-sm font-bold text-blue-400 hover:text-blue-300"
+                    >
+                      Add your first project →
+                    </button>
                   )}
                 </div>
               ) : (
                 <div className="mt-7 space-y-5">
                   {projects.map((project) => (
-                    <div key={project.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:border-blue-400/20 hover:bg-white/[0.04]">
+                    <div
+                      key={project.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:border-blue-400/20 hover:bg-white/[0.04]"
+                    >
                       <div className="flex flex-col justify-between gap-5">
                         <div>
                           <h3 className="text-xl font-extrabold">{project.title}</h3>
-                          <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-400">{project.description || "No description added."}</p>
+                          <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-400">
+                            {project.description || "No description added."}
+                          </p>
                         </div>
 
                         {project.technologies && project.technologies.length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {project.technologies.map((technology) => (
-                              <span key={technology} className="rounded-full border border-blue-400/10 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-300">{technology}</span>
+                              <span
+                                key={technology}
+                                className="rounded-full border border-blue-400/10 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-300"
+                              >
+                                {technology}
+                              </span>
                             ))}
                           </div>
                         )}
 
                         <div className="flex flex-wrap gap-2">
                           {project.github_url && (
-                            <a href={project.github_url} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white">GitHub ↗</a>
+                            <a
+                              href={project.github_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                            >
+                              GitHub ↗
+                            </a>
                           )}
+
                           {project.live_url && (
-                            <a href={project.live_url} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500">Live Demo ↗</a>
+                            <a
+                              href={project.live_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-500"
+                            >
+                              Live Demo ↗
+                            </a>
                           )}
                         </div>
                       </div>
@@ -339,7 +402,10 @@ export default function ProfilePage() {
                     <h2 className="text-xl font-black">Articles</h2>
                   </div>
                 </div>
-                <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">{articles.length}</span>
+
+                <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">
+                  {articles.length}
+                </span>
               </div>
 
               {articles.length === 0 ? (
@@ -347,22 +413,38 @@ export default function ProfilePage() {
                   <div className="text-3xl">📝</div>
                   <p className="mt-3 font-bold text-slate-400">No articles published yet.</p>
                   {isOwnProfile && (
-                    <button onClick={() => router.push("/community/new")} className="mt-4 text-sm font-bold text-blue-400 hover:text-blue-300">Write your first article →</button>
+                    <button
+                      onClick={() => router.push("/community/new")}
+                      className="mt-4 text-sm font-bold text-blue-400 hover:text-blue-300"
+                    >
+                      Write your first article →
+                    </button>
                   )}
                 </div>
               ) : (
                 <div className="mt-7 space-y-4">
                   {articles.map((article) => (
-                    <div key={article.id} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:border-blue-400/20 hover:bg-white/[0.04]">
+                    <div
+                      key={article.id}
+                      className="rounded-2xl border border-white/10 bg-white/[0.025] p-5 transition hover:border-blue-400/20 hover:bg-white/[0.04]"
+                    >
                       <div className="flex flex-wrap items-center gap-3">
-                        <span className="rounded-full border border-blue-400/15 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300">{article.category || "Engineering"}</span>
+                        <span className="rounded-full border border-blue-400/15 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300">
+                          {article.category || "Engineering"}
+                        </span>
                         <span className="text-xs text-slate-500">
-                          {new Date(article.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+                          {new Date(article.created_at).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          })}
                         </span>
                       </div>
 
                       <h3 className="mt-4 text-xl font-black text-white">{article.title}</h3>
-                      <p className="mt-2 line-clamp-3 whitespace-pre-wrap leading-7 text-slate-400">{article.content}</p>
+                      <p className="mt-2 line-clamp-3 whitespace-pre-wrap leading-7 text-slate-400">
+                        {article.content}
+                      </p>
 
                       <button
                         onClick={() => router.push(`/community/${article.id}`)}
@@ -390,13 +472,25 @@ export default function ProfilePage() {
               {profile.skills && profile.skills.length > 0 ? (
                 <div className="mt-7 flex flex-wrap gap-2.5">
                   {profile.skills.map((skill) => (
-                    <span key={skill} className="rounded-xl border border-blue-400/10 bg-blue-500/10 px-3.5 py-2 text-sm font-bold text-blue-300">{skill}</span>
+                    <span
+                      key={skill}
+                      className="rounded-xl border border-blue-400/10 bg-blue-500/10 px-3.5 py-2 text-sm font-bold text-blue-300"
+                    >
+                      {skill}
+                    </span>
                   ))}
                 </div>
               ) : (
                 <div className="mt-7 rounded-2xl border border-dashed border-white/10 p-5">
                   <p className="text-sm leading-6 text-slate-500">No skills added yet.</p>
-                  {isOwnProfile && <button onClick={() => router.push("/profile/edit")} className="mt-3 text-sm font-bold text-blue-400 hover:text-blue-300">Add skills →</button>}
+                  {isOwnProfile && (
+                    <button
+                      onClick={() => router.push("/profile/edit")}
+                      className="mt-3 text-sm font-bold text-blue-400 hover:text-blue-300"
+                    >
+                      Add skills →
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -404,20 +498,52 @@ export default function ProfilePage() {
             <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl sm:p-8">
               <p className="text-xs font-extrabold tracking-widest text-blue-400">EDUCATION</p>
               <h2 className="mt-2 text-xl font-black">Academic profile</h2>
+
               <div className="mt-6 space-y-5">
-                {profile.college && <div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">College</p><p className="mt-1 font-bold text-slate-200">{profile.college}</p></div>}
-                {profile.branch && <div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Branch</p><p className="mt-1 font-bold text-slate-200">{profile.branch}</p></div>}
-                {profile.graduation_year && <div><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Graduation</p><p className="mt-1 font-bold text-slate-200">{profile.graduation_year}</p></div>}
+                {profile.college && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">College</p>
+                    <p className="mt-1 font-bold text-slate-200">{profile.college}</p>
+                  </div>
+                )}
+                {profile.branch && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Branch</p>
+                    <p className="mt-1 font-bold text-slate-200">{profile.branch}</p>
+                  </div>
+                )}
+                {profile.graduation_year && (
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Graduation</p>
+                    <p className="mt-1 font-bold text-slate-200">{profile.graduation_year}</p>
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-xl backdrop-blur-xl">
               <p className="text-xs font-extrabold tracking-widest text-blue-400">STUDEXA</p>
               <h2 className="mt-2 text-xl font-black">Explore more</h2>
+
               <div className="mt-5 space-y-2">
-                <button onClick={() => router.push("/students")} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white">👥 Discover students</button>
-                <button onClick={() => router.push("/community")} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white">📝 Visit community</button>
-                <button onClick={() => router.push("/dashboard")} className="w-full rounded-xl bg-blue-600 px-4 py-3 text-left text-sm font-bold text-white transition hover:bg-blue-500">🏠 Go to dashboard</button>
+                <button
+                  onClick={() => router.push("/students")}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                >
+                  👥 Discover students
+                </button>
+                <button
+                  onClick={() => router.push("/community")}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-bold text-slate-300 transition hover:bg-white/10 hover:text-white"
+                >
+                  📝 Visit community
+                </button>
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-left text-sm font-bold text-white transition hover:bg-blue-500"
+                >
+                  🏠 Go to dashboard
+                </button>
               </div>
             </div>
           </div>

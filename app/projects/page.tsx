@@ -29,25 +29,34 @@ export default function ProjectsPage() {
   const [liveUrl, setLiveUrl] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     loadProjects();
   }, []);
 
-  async function loadProjects() {
-    setLoading(true);
-
+  async function getCurrentUser() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
       router.push("/login");
-      return;
+      return null;
     }
 
-    const { data, error } = await supabase
+    return user;
+  }
+
+  async function loadProjects() {
+    setLoading(true);
+    setError("");
+
+    const user = await getCurrentUser();
+    if (!user) return;
+
+    const { data, error: loadError } = await supabase
       .from("projects")
       .select(
         "id, user_id, title, description, technologies, github_url, live_url, created_at"
@@ -55,9 +64,9 @@ export default function ProjectsPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("PROJECTS ERROR:", error);
-      setError(error.message);
+    if (loadError) {
+      console.error("PROJECTS ERROR:", loadError);
+      setError(loadError.message);
     } else {
       setProjects(data || []);
     }
@@ -67,22 +76,26 @@ export default function ProjectsPage() {
 
   async function handleAddProject(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     setError("");
 
-    if (!title.trim()) {
+    const cleanTitle = title.trim();
+    const cleanDescription = description.trim();
+
+    if (!cleanTitle) {
       setError("Please enter a project title.");
+      return;
+    }
+
+    if (!cleanDescription) {
+      setError("Please add a short project description.");
       return;
     }
 
     setSaving(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getCurrentUser();
     if (!user) {
-      router.push("/login");
+      setSaving(false);
       return;
     }
 
@@ -95,8 +108,8 @@ export default function ProjectsPage() {
       .from("projects")
       .insert({
         user_id: user.id,
-        title: title.trim(),
-        description: description.trim() || null,
+        title: cleanTitle,
+        description: cleanDescription,
         technologies: technologyArray,
         github_url: githubUrl.trim() || null,
         live_url: liveUrl.trim() || null,
@@ -117,7 +130,6 @@ export default function ProjectsPage() {
     setShowForm(false);
 
     await loadProjects();
-
     setSaving(false);
   }
 
@@ -126,22 +138,35 @@ export default function ProjectsPage() {
       "Are you sure you want to delete this project?"
     );
 
-    if (!confirmed) return;
+    if (!confirmed || deletingId) return;
 
-    const { error } = await supabase
+    setDeletingId(id);
+    setError("");
+
+    const user = await getCurrentUser();
+    if (!user) {
+      setDeletingId(null);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
       .from("projects")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", user.id);
 
-    if (error) {
-      console.error("DELETE PROJECT ERROR:", error);
-      setError(error.message);
+    if (deleteError) {
+      console.error("DELETE PROJECT ERROR:", deleteError);
+      setError(deleteError.message);
+      setDeletingId(null);
       return;
     }
 
     setProjects((current) =>
       current.filter((project) => project.id !== id)
     );
+
+    setDeletingId(null);
   }
 
   return (
@@ -156,7 +181,6 @@ export default function ProjectsPage() {
       {/* Navbar */}
       <nav className="relative z-10 border-b border-white/10 bg-[#050b1f]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-
           <button
             onClick={() => router.push("/")}
             className="text-2xl font-extrabold tracking-tight"
@@ -165,7 +189,6 @@ export default function ProjectsPage() {
           </button>
 
           <div className="flex items-center gap-3">
-
             <button
               onClick={() => router.push("/dashboard")}
               className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-white/10"
@@ -179,22 +202,17 @@ export default function ProjectsPage() {
             >
               Students
             </button>
-
           </div>
         </div>
       </nav>
 
       {/* Main */}
       <section className="relative z-10 mx-auto max-w-7xl px-6 py-16">
-
-        {/* Header */}
         <div className="flex flex-col justify-between gap-8 md:flex-row md:items-end">
-
           <div className="max-w-3xl">
-
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300">
               <span className="h-2 w-2 rounded-full bg-blue-400" />
-              Your projects 🚀
+              Your projects
             </div>
 
             <h1 className="text-5xl font-black tracking-tight md:text-6xl">
@@ -208,19 +226,19 @@ export default function ProjectsPage() {
               Showcase your projects, technical skills and the things
               you're proud of building.
             </p>
-
           </div>
 
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => {
+              setError("");
+              setShowForm((current) => !current);
+            }}
             className="rounded-2xl bg-blue-600 px-6 py-4 font-extrabold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-500"
           >
             {showForm ? "Close" : "+ Add Project"}
           </button>
-
         </div>
 
-        {/* Error */}
         {error && (
           <div className="mt-8 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm font-semibold text-red-300">
             {error}
@@ -233,25 +251,20 @@ export default function ProjectsPage() {
             onSubmit={handleAddProject}
             className="mt-10 rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl backdrop-blur-xl md:p-8"
           >
-
             <div className="mb-8">
               <p className="text-sm font-bold uppercase tracking-widest text-blue-400">
                 New project
               </p>
-
               <h2 className="mt-2 text-2xl font-extrabold">
                 Add something you built
               </h2>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-
-              {/* Title */}
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   Project title
                 </label>
-
                 <input
                   type="text"
                   value={title}
@@ -261,12 +274,10 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              {/* Description */}
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   Description
                 </label>
-
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -276,12 +287,10 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              {/* Technologies */}
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   Technologies
                 </label>
-
                 <input
                   type="text"
                   value={technologies}
@@ -289,18 +298,15 @@ export default function ProjectsPage() {
                   placeholder="React, Next.js, Supabase"
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-white outline-none placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
-
                 <p className="mt-2 text-xs text-slate-500">
                   Separate technologies with commas.
                 </p>
               </div>
 
-              {/* GitHub */}
               <div>
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   GitHub URL
                 </label>
-
                 <input
                   type="url"
                   value={githubUrl}
@@ -310,12 +316,10 @@ export default function ProjectsPage() {
                 />
               </div>
 
-              {/* Live URL */}
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-bold text-slate-300">
                   Live project URL
                 </label>
-
                 <input
                   type="url"
                   value={liveUrl}
@@ -324,7 +328,6 @@ export default function ProjectsPage() {
                   className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3.5 text-white outline-none placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
-
             </div>
 
             <button
@@ -334,11 +337,9 @@ export default function ProjectsPage() {
             >
               {saving ? "Saving project..." : "Save Project →"}
             </button>
-
           </form>
         )}
 
-        {/* Loading */}
         {loading && (
           <div className="mt-12 rounded-3xl border border-white/10 bg-white/[0.04] p-12 text-center">
             <p className="font-semibold text-slate-400">
@@ -347,89 +348,81 @@ export default function ProjectsPage() {
           </div>
         )}
 
-        {/* Empty */}
         {!loading && projects.length === 0 && !showForm && (
           <div className="mt-12 rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-16 text-center">
-
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-500/10 text-3xl">
               🚀
             </div>
-
             <h2 className="mt-6 text-2xl font-extrabold">
               No projects yet
             </h2>
-
             <p className="mx-auto mt-3 max-w-md text-slate-400">
               Start showcasing your work. Add your first project
               and let other students see what you can build.
             </p>
-
             <button
               onClick={() => setShowForm(true)}
               className="mt-7 rounded-xl bg-blue-600 px-6 py-3 font-bold transition hover:bg-blue-500"
             >
               Add your first project →
             </button>
-
           </div>
         )}
 
-        {/* Projects */}
         {!loading && projects.length > 0 && (
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-
             {projects.map((project) => (
               <article
                 key={project.id}
                 className="group flex flex-col rounded-3xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-blue-400/30 hover:bg-white/[0.06]"
               >
-
-                {/* Icon */}
                 <div className="flex items-start justify-between">
-
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-2xl">
                     💻
                   </div>
 
-                  <button
-                    onClick={() => deleteProject(project.id)}
-                    className="rounded-lg px-2 py-1 text-xs font-bold text-slate-500 transition hover:bg-red-500/10 hover:text-red-400"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/projects/${project.id}`)}
+                      className="rounded-lg px-3 py-1.5 text-xs font-bold text-blue-300 transition hover:bg-blue-500/10 hover:text-blue-200"
+                    >
+                      Edit
+                    </button>
 
+                    <button
+                      type="button"
+                      onClick={() => deleteProject(project.id)}
+                      disabled={deletingId === project.id}
+                      className="rounded-lg px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingId === project.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Title */}
                 <h2 className="mt-6 text-2xl font-extrabold text-white">
                   {project.title}
                 </h2>
 
-                {/* Description */}
                 <p className="mt-3 flex-1 text-sm leading-7 text-slate-400">
                   {project.description || "No description added."}
                 </p>
 
-                {/* Technologies */}
-                {project.technologies &&
-                  project.technologies.length > 0 && (
-                    <div className="mt-6 flex flex-wrap gap-2">
+                {project.technologies && project.technologies.length > 0 && (
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    {project.technologies.map((technology) => (
+                      <span
+                        key={technology}
+                        className="rounded-full border border-blue-400/10 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300"
+                      >
+                        {technology}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
-                      {project.technologies.map((technology) => (
-                        <span
-                          key={technology}
-                          className="rounded-full border border-blue-400/10 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300"
-                        >
-                          {technology}
-                        </span>
-                      ))}
-
-                    </div>
-                  )}
-
-                {/* Links */}
                 <div className="mt-7 flex gap-3">
-
                   {project.github_url && (
                     <a
                       href={project.github_url}
@@ -451,15 +444,11 @@ export default function ProjectsPage() {
                       Live Demo ↗
                     </a>
                   )}
-
                 </div>
-
               </article>
             ))}
-
           </div>
         )}
-
       </section>
     </main>
   );

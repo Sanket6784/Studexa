@@ -72,68 +72,68 @@ export default function FeedbackReviews() {
   }
 
   return (
-    <section className="relative z-10 border-y border-white/10 bg-white/[0.02]">
-      <div className="mx-auto max-w-7xl px-6 py-20 md:py-24">
+    <section className="border-y border-slate-200 bg-[#f7f9fc]">
+      <div className="mx-auto max-w-7xl px-5 py-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-sm font-bold tracking-[0.2em] text-blue-400">FEEDBACK & REVIEWS</p>
-          <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">Tell us what you think.</h2>
-          <p className="mt-5 text-lg leading-8 text-slate-400">Your feedback helps us improve Studexa for students and creators.</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Feedback & reviews</p>
+          <h2 className="mt-4 text-4xl font-black tracking-[-0.03em] text-slate-950 sm:text-5xl">Help shape Technerva.</h2>
+          <p className="mt-5 text-lg leading-8 text-slate-600">Your feedback helps us build a better platform for engineering students and creators.</p>
         </div>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <form onSubmit={submitReview} className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl sm:p-8">
-            <h3 className="text-2xl font-black text-white">Leave a review</h3>
+        <div className="mt-12 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+          <form onSubmit={submitReview} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+            <h3 className="text-2xl font-black text-slate-950">Leave a review</h3>
 
-            <label className="mt-6 block text-sm font-bold text-slate-200">
-              Name <span className="font-normal text-slate-500">(optional)</span>
-              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-blue-500/50" />
+            <label className="mt-6 block text-sm font-bold text-slate-700">
+              Name <span className="font-normal text-slate-400">(optional)</span>
+              <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your name" className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10" />
             </label>
 
             <fieldset className="mt-6">
-              <legend className="text-sm font-bold text-slate-200">Rating</legend>
+              <legend className="text-sm font-bold text-slate-700">Rating</legend>
               <div className="mt-3 flex gap-2">
                 {[1, 2, 3, 4, 5].map((value) => (
-                  <button key={value} type="button" aria-label={`${value} star rating`} onClick={() => setRating(value)} className={`text-2xl transition ${value <= rating ? "text-yellow-300" : "text-slate-700"}`}>
+                  <button key={value} type="button" aria-label={`${value} star rating`} onClick={() => setRating(value)} className={`text-2xl transition ${value <= rating ? "text-amber-400" : "text-slate-300"}`}>
                     ★
                   </button>
                 ))}
               </div>
             </fieldset>
 
-            <label className="mt-6 block text-sm font-bold text-slate-200">
+            <label className="mt-6 block text-sm font-bold text-slate-700">
               Feedback
-              <textarea required minLength={3} maxLength={2000} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="What should we improve or keep doing?" rows={6} className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-white/5 px-4 py-3 leading-7 text-white outline-none placeholder:text-slate-600 focus:border-blue-500/50" />
+              <textarea required minLength={3} maxLength={2000} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="What should we improve or keep doing?" rows={6} className="mt-2 w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 leading-7 text-slate-950 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10" />
             </label>
 
-            {message && <p className="mt-4 text-sm font-semibold text-blue-300">{message}</p>}
+            {message && <p className="mt-4 text-sm font-semibold text-blue-600">{message}</p>}
 
-            <button type="submit" disabled={submitting} className="mt-6 w-full rounded-xl bg-blue-600 px-6 py-3.5 font-bold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
-              {submitting ? "Submitting..." : "Submit review →"}
+            <button type="submit" disabled={submitting} className="mt-6 w-full rounded-xl bg-slate-950 px-6 py-3.5 font-bold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
+              {submitting ? "Submitting..." : "Submit review"}
             </button>
           </form>
 
-          <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 backdrop-blur-xl sm:p-8">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
             <div className="flex items-center justify-between gap-4">
-              <h3 className="text-2xl font-black text-white">What people say</h3>
-              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-slate-400">Latest reviews</span>
+              <h3 className="text-2xl font-black text-slate-950">What people say</h3>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">Latest</span>
             </div>
 
             {loading ? (
-              <p className="mt-8 text-slate-500">Loading reviews...</p>
+              <p className="mt-8 text-slate-400">Loading reviews...</p>
             ) : reviews.length === 0 ? (
-              <div className="mt-8 rounded-2xl border border-dashed border-white/10 p-8 text-center">
-                <p className="font-bold text-slate-300">No reviews yet.</p>
-                <p className="mt-2 text-sm text-slate-500">Be the first to share your experience.</p>
+              <div className="mt-8 rounded-2xl border border-dashed border-slate-200 p-8 text-center">
+                <p className="font-bold text-slate-700">No reviews yet.</p>
+                <p className="mt-2 text-sm text-slate-400">Be the first to share your experience.</p>
               </div>
             ) : (
               <div className="mt-6 space-y-4">
                 {reviews.map((review) => (
-                  <article key={review.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                  <article key={review.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <div className="flex items-center justify-between gap-4">
-                      <p className="font-bold text-white">{review.name || "Studexa User"}</p>
-                      <p className="text-sm tracking-wide text-yellow-300">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</p>
+                      <p className="font-bold text-slate-950">{review.name || "Technerva User"}</p>
+                      <p className="text-sm tracking-wide text-amber-400">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</p>
                     </div>
-                    <p className="mt-3 leading-7 text-slate-400">{review.feedback}</p>
+                    <p className="mt-3 leading-7 text-slate-600">{review.feedback}</p>
                   </article>
                 ))}
               </div>

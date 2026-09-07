@@ -14,29 +14,31 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Studexa — Your Student Identity",
-    template: "%s | Studexa",
+    default: "Technerva — The Engineering Student Network",
+    template: "%s | Technerva",
   },
   description:
-    "Build your professional student identity, showcase projects, share knowledge, discover students and grow your network with Studexa.",
-  applicationName: "Studexa",
+    "Build your engineering identity, showcase projects, publish blogs, discover talented students and grow your professional network with Technerva.",
+  applicationName: "Technerva",
   keywords: [
-    "Studexa",
-    "student profile",
-    "student portfolio",
-    "student community",
-    "projects",
+    "Technerva",
     "engineering students",
+    "engineering student network",
+    "student portfolio",
+    "engineering projects",
+    "engineering blogs",
+    "student community",
   ],
-  authors: [{ name: "Studexa" }],
-  creator: "Studexa",
+  authors: [{ name: "Technerva" }],
+  creator: "Technerva",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "https://studexa-indol.vercel.app"
   ),
   openGraph: {
-    title: "Studexa — Your Student Identity",
-    description: "Build your student identity beyond the resume.",
-    siteName: "Studexa",
+    title: "Technerva — The Engineering Student Network",
+    description:
+      "Build. Share. Connect. Grow with the network built for the next generation of engineers.",
+    siteName: "Technerva",
     type: "website",
   },
   robots: {

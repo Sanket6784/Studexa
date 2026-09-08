@@ -4,109 +4,13 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
-const FIELDS = ["Engineering","Law","Agriculture","Medicine & Healthcare","Commerce & Management","Arts & Humanities","Science","Design & Architecture","Other"];
-
-export default function EditProfilePage() {
-  const router = useRouter();
-  const [fullName, setFullName] = useState("");
-  const [college, setCollege] = useState("");
-  const [fieldOfStudy, setFieldOfStudy] = useState("");
-  const [course, setCourse] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [branch, setBranch] = useState("");
-  const [graduationYear, setGraduationYear] = useState("");
-  const [skills, setSkills] = useState("");
-  const [bio, setBio] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
-      const { data, error } = await supabase.from("profiles").select("full_name, avatar_url, college, field_of_study, course, specialization, branch, graduation_year, skills, bio").eq("id", user.id).maybeSingle();
-      if (error) setError("Unable to load your profile.");
-      if (data) {
-        setFullName(data.full_name || "");
-        setAvatarUrl(data.avatar_url || null);
-        setCollege(data.college || "");
-        setFieldOfStudy(data.field_of_study || "");
-        setCourse(data.course || "");
-        setSpecialization(data.specialization || "");
-        setBranch(data.branch || "");
-        setGraduationYear(data.graduation_year ? String(data.graduation_year) : "");
-        setSkills(Array.isArray(data.skills) ? data.skills.join(", ") : "");
-        setBio(data.bio || "");
-      }
-      setLoading(false);
-    }
-    loadProfile();
-  }, [router]);
-
-  function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { setError("Please select an image file."); return; }
-    if (file.size > 5 * 1024 * 1024) { setError("Profile photo must be smaller than 5MB."); return; }
-    setError(""); setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file));
-  }
-
-  async function uploadAvatar(userId: string, file: File) {
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const filePath = `${userId}/avatar-${Date.now()}.${extension}`;
-    const { error } = await supabase.storage.from("avatars").upload(filePath, file, { cacheControl: "3600", upsert: true });
-    if (error) throw error;
-    return supabase.storage.from("avatars").getPublicUrl(filePath).data.publicUrl;
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setSaving(true); setError("");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("You must be logged in."); setSaving(false); return; }
-
-    const values = { fullName: fullName.trim(), college: college.trim(), field: fieldOfStudy.trim(), course: course.trim(), specialization: specialization.trim(), branch: branch.trim(), bio: bio.trim() };
-    if (!values.fullName || !values.college || !values.field || !values.course || !values.bio) { setError("Please complete your name, college, field, course and bio."); setSaving(false); return; }
-    const skillList = skills.split(",").map((s) => s.trim()).filter(Boolean);
-    if (!skillList.length) { setError("Please add at least one skill."); setSaving(false); return; }
-    const year = Number(graduationYear);
-    if (!year || year < 2000 || year > 2100) { setError("Please enter a valid graduation year."); setSaving(false); return; }
-
-    try {
-      let finalAvatarUrl = avatarUrl;
-      if (avatarFile) finalAvatarUrl = await uploadAvatar(user.id, avatarFile);
-      const { error } = await supabase.from("profiles").upsert({ id: user.id, full_name: values.fullName, avatar_url: finalAvatarUrl, college: values.college, field_of_study: values.field, course: values.course, specialization: values.specialization || null, branch: values.branch || null, graduation_year: year, skills: skillList, bio: values.bio, updated_at: new Date().toISOString() });
-      if (error) throw error;
-      router.push(`/profile/${user.id}`); router.refresh();
-    } catch (err: any) {
-      console.error(err); setError(err?.message || "Unable to save your profile."); setSaving(false);
-    }
-  }
-
-  if (loading) return <main className="flex min-h-screen items-center justify-center bg-[#050b24] text-white"><div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" /><p className="mt-5 font-bold text-slate-400">Loading your profile...</p></div></main>;
-
-  const avatar = avatarPreview || avatarUrl;
-
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050b24] text-white">
-      <div className="pointer-events-none fixed inset-0"><div className="absolute left-[10%] top-[-250px] h-[600px] w-[600px] rounded-full bg-blue-600/15 blur-[150px]" /><div className="absolute right-[-200px] top-[30%] h-[550px] w-[550px] rounded-full bg-cyan-500/10 blur-[150px]" /></div>
-      <nav className="relative z-10 border-b border-white/10 bg-[#050b24]/80 backdrop-blur-xl"><div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5"><button onClick={() => router.push("/")} className="text-2xl font-black">Studexa<span className="text-blue-500">.</span></button><button onClick={() => router.push("/dashboard")} className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-bold text-slate-300 hover:bg-white/[0.08]">Dashboard</button></div></nav>
-      <section className="relative z-10 mx-auto max-w-3xl px-5 py-10 md:py-14">
-        <div><div className="inline-flex rounded-full border border-blue-400/20 bg-blue-500/10 px-3.5 py-2 text-xs font-extrabold tracking-widest text-blue-300">PROFILE SETTINGS</div><h1 className="mt-5 text-4xl font-black tracking-tight md:text-5xl">Edit your <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">profile.</span></h1><p className="mt-4 text-slate-400">Keep your student identity current across every discipline.</p></div>
-        <form onSubmit={handleSubmit} className="mt-9 rounded-3xl border border-white/10 bg-white/[0.045] p-6 shadow-2xl backdrop-blur-xl sm:p-8">
-          <div className="border-b border-white/10 pb-8"><p className="text-xs font-extrabold tracking-widest text-blue-400">PROFILE PHOTO</p><div className="mt-5 flex flex-col items-center gap-5 sm:flex-row">{avatar ? <img src={avatar} alt={fullName || "Profile"} className="h-28 w-28 rounded-3xl object-cover ring-2 ring-blue-400/30" /> : <div className="flex h-28 w-28 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-cyan-400 text-4xl font-black">{fullName.charAt(0).toUpperCase() || "S"}</div>}<div><label htmlFor="avatar" className="inline-flex cursor-pointer rounded-xl bg-blue-600 px-5 py-3 font-bold">Change photo</label><input id="avatar" type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" /><p className="mt-3 text-xs text-slate-500">JPG, PNG or WEBP. Maximum 5MB.</p></div></div></div>
-          <div className="mt-8"><p className="text-xs font-extrabold tracking-widest text-blue-400">ACADEMIC IDENTITY</p><div className="mt-5 grid gap-5 md:grid-cols-2"><Input label="Full name" value={fullName} onChange={setFullName} placeholder="Your full name" /><Input label="College / University" value={college} onChange={setCollege} placeholder="Your college or university" /></div><div className="mt-5 grid gap-5 md:grid-cols-2"><Select label="Field of study" value={fieldOfStudy} onChange={setFieldOfStudy} options={FIELDS} /><Input label="Course / Program" value={course} onChange={setCourse} placeholder="B.Tech, BA LLB, B.Sc Agriculture..." /></div><div className="mt-5 grid gap-5 md:grid-cols-2"><Input label="Specialization" value={specialization} onChange={setSpecialization} placeholder="Corporate Law, Agronomy, Computer Science..." /><Input label="Branch / Major (optional)" value={branch} onChange={setBranch} placeholder="CSE, Finance, Psychology..." /></div><div className="mt-5 grid gap-5 md:grid-cols-2"><Input label="Graduation year" value={graduationYear} onChange={setGraduationYear} placeholder="2027" type="number" /><Input label="Skills" value={skills} onChange={setSkills} placeholder="Research, Python, Drafting, Design..." /></div><div className="mt-2 text-xs text-slate-500">Separate skills with commas.</div></div>
-          <div className="mt-8"><label className="text-xs font-extrabold tracking-widest text-blue-400">ABOUT YOU</label><textarea required rows={6} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell other students about your interests, work and goals..." className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5 leading-7 text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" /></div>
-          {error && <div className="mt-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm font-semibold text-red-300">{error}</div>}
-          <button type="submit" disabled={saving} className="mt-7 w-full rounded-xl bg-blue-600 px-6 py-4 font-black shadow-lg shadow-blue-600/20 transition hover:bg-blue-500 disabled:opacity-60">{saving ? "Saving your profile..." : "Save changes →"}</button>
-        </form>
-      </section>
-    </main>
-  );
+export default function EditProfilePage(){
+ const router=useRouter();const [fullName,setFullName]=useState("");const [college,setCollege]=useState("");const [course,setCourse]=useState("");const [specialization,setSpecialization]=useState("");const [branch,setBranch]=useState("");const [year,setYear]=useState("");const [skills,setSkills]=useState("");const [bio,setBio]=useState("");const [avatar,setAvatar]=useState<string|null>(null);const [file,setFile]=useState<File|null>(null);const [preview,setPreview]=useState<string|null>(null);const [loading,setLoading]=useState(true);const [saving,setSaving]=useState(false);const [error,setError]=useState("");
+ useEffect(()=>{(async()=>{const {data:{user}}=await supabase.auth.getUser();if(!user){router.push("/login");return;}const {data,error}=await supabase.from("profiles").select("full_name,avatar_url,college,course,specialization,branch,graduation_year,skills,bio").eq("id",user.id).maybeSingle();if(error)setError(error.message);if(data){setFullName(data.full_name||"");setAvatar(data.avatar_url||null);setCollege(data.college||"");setCourse(data.course||"");setSpecialization(data.specialization||"");setBranch(data.branch||"");setYear(data.graduation_year?String(data.graduation_year):"");setSkills(Array.isArray(data.skills)?data.skills.join(", "):"");setBio(data.bio||"");}setLoading(false);})();},[router]);
+ function photo(e:ChangeEvent<HTMLInputElement>){const f=e.target.files?.[0];if(!f)return;if(!f.type.startsWith("image/")){setError("Please choose an image file.");return;}if(f.size>5*1024*1024){setError("Photo must be smaller than 5MB.");return;}setError("");setFile(f);setPreview(URL.createObjectURL(f));}
+ async function submit(e:FormEvent){e.preventDefault();setError("");if(!fullName.trim()||!college.trim()||!course.trim()||!branch.trim()||!bio.trim()||!skills.trim()||!year){setError("Please complete your name, college, course, branch, graduation year, skills and bio.");return;}const y=Number(year);if(y<2000||y>2100){setError("Enter a valid graduation year.");return;}setSaving(true);const {data:{user}}=await supabase.auth.getUser();if(!user){router.push("/login");return;}try{let image=avatar;if(file){const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${user.id}/avatar-${Date.now()}.${ext}`;const up=await supabase.storage.from("avatars").upload(path,file,{cacheControl:"3600",upsert:true});if(up.error)throw up.error;image=supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;}const {error}=await supabase.from("profiles").upsert({id:user.id,full_name:fullName.trim(),avatar_url:image,college:college.trim(),field_of_study:"Engineering",course:course.trim(),specialization:specialization.trim()||null,branch:branch.trim(),graduation_year:y,skills:skills.split(",").map(x=>x.trim()).filter(Boolean),bio:bio.trim(),updated_at:new Date().toISOString()});if(error)throw error;router.push(`/profile/${user.id}`);router.refresh();}catch(err:any){setError(err?.message||"Unable to save profile.");setSaving(false);}}
+ const field="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10";
+ if(loading)return <main className="flex min-h-screen items-center justify-center bg-[#f7f9fc] text-slate-500">Loading profile…</main>;
+ return <main className="min-h-screen bg-[#f7f9fc] text-slate-900"><nav className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-4xl items-center justify-between px-5 py-4"><button onClick={()=>router.push("/")} className="text-xl font-black">TECHNERVA<span className="text-blue-600">.</span></button><button onClick={()=>router.push("/dashboard")} className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold hover:bg-slate-50">Dashboard</button></div></nav><section className="mx-auto max-w-3xl px-5 py-10 md:py-14"><p className="text-sm font-bold uppercase tracking-[.16em] text-blue-600">Engineering profile</p><h1 className="mt-2 text-4xl font-black tracking-tight">Build your profile.</h1><p className="mt-3 text-slate-600">Tell the engineering community what you study, build and care about.</p><form onSubmit={submit} className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:p-8"><div className="flex flex-col items-start gap-4 border-b border-slate-100 pb-7 sm:flex-row sm:items-center"><div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl bg-blue-50 text-3xl font-black text-blue-700">{preview||avatar?<img src={preview||avatar||""} alt="" className="h-full w-full object-cover"/>:fullName.charAt(0).toUpperCase()||"E"}</div><div><label className="inline-flex cursor-pointer rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">Change photo<input type="file" accept="image/*" onChange={photo} className="hidden"/></label><p className="mt-2 text-xs text-slate-400">JPG, PNG or WEBP · max 5MB</p></div></div><div className="mt-7"><p className="text-xs font-bold uppercase tracking-[.15em] text-slate-400">Academic identity</p><div className="mt-4 grid gap-5 md:grid-cols-2"><LabelInput label="Full name" value={fullName} set={setFullName} placeholder="Your full name"/><LabelInput label="College / University" value={college} set={setCollege} placeholder="Your college"/><LabelInput label="Course / Program" value={course} set={setCourse} placeholder="B.Tech CSE"/><LabelInput label="Branch" value={branch} set={setBranch} placeholder="Computer Science & Engineering"/><LabelInput label="Specialization (optional)" value={specialization} set={setSpecialization} placeholder="AI, Cybersecurity, VLSI..."/><LabelInput label="Graduation year" value={year} set={setYear} placeholder="2027" type="number"/></div></div><div className="mt-7"><label className="mb-2 block text-sm font-bold">Skills</label><input className={field} value={skills} onChange={e=>setSkills(e.target.value)} placeholder="Python, React, DSA, Machine Learning"/><p className="mt-2 text-xs text-slate-400">Separate skills with commas.</p></div><div className="mt-6"><label className="mb-2 block text-sm font-bold">Bio</label><textarea rows={6} value={bio} onChange={e=>setBio(e.target.value)} placeholder="What are you building, learning or looking to collaborate on?" className={field+" resize-none leading-7"}/></div>{error&&<div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}<button disabled={saving} className="mt-6 w-full rounded-xl bg-blue-600 py-3.5 font-black text-white hover:bg-blue-700 disabled:opacity-60">{saving?"Saving…":"Save profile →"}</button></form></section></main>;
 }
-
-function Input({ label, value, onChange, placeholder, type = "text" }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; type?: string }) { return <div><label className="mb-2 block text-sm font-bold text-slate-300">{label}</label><input type={type} min={type === "number" ? "2000" : undefined} max={type === "number" ? "2100" : undefined} required={label !== "Specialization" && label !== "Branch / Major (optional)"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-white placeholder:text-slate-600 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10" /></div>; }
-function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) { return <div><label className="mb-2 block text-sm font-bold text-slate-300">{label}</label><select required value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-xl border border-white/10 bg-[#0a1230] px-4 py-3.5 text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"><option value="">Select your field</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></div>; }
+function LabelInput({label,value,set,placeholder,type="text"}:{label:string;value:string;set:(v:string)=>void;placeholder:string;type?:string}){return <div><label className="mb-2 block text-sm font-bold">{label}</label><input type={type} value={value} onChange={e=>set(e.target.value)} placeholder={placeholder} className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"/></div>}

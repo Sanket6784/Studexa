@@ -29,51 +29,37 @@ type Comment = {
   created_at: string;
 };
 
-export default function ArticlePage() {
+export default function BlogPage() {
   const router = useRouter();
   const params = useParams();
-
   const postId = params.id as string;
 
   const [post, setPost] = useState<Post | null>(null);
   const [author, setAuthor] = useState<Profile | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
   const [comments, setComments] = useState<Comment[]>([]);
-  const [commentAuthors, setCommentAuthors] = useState<
-    Record<string, Profile>
-  >({});
-
+  const [commentAuthors, setCommentAuthors] = useState<Record<string, Profile>>({});
   const [commentText, setCommentText] = useState("");
-
   const [likeCount, setLikeCount] = useState(0);
   const [likedByMe, setLikedByMe] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (postId) {
-      loadArticle();
-    }
+    if (postId) loadBlog();
   }, [postId]);
 
-  async function loadArticle() {
+  async function loadBlog() {
     setLoading(true);
     setError("");
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.push("/login");
       return;
     }
-
     setCurrentUserId(user.id);
 
-    // Get post
     const { data: postData, error: postError } = await supabase
       .from("posts")
       .select("*")
@@ -82,7 +68,7 @@ export default function ArticlePage() {
 
     if (postError) {
       console.error("POST ERROR:", postError);
-      setError("Could not load this article.");
+      setError("Could not load this blog.");
       setLoading(false);
       return;
     }
@@ -95,92 +81,47 @@ export default function ArticlePage() {
 
     setPost(postData);
 
-    // Get author
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileData } = await supabase
       .from("profiles")
       .select("id, full_name, college, branch, avatar_url")
       .eq("id", postData.user_id)
       .maybeSingle();
-
-    if (profileError) {
-      console.error("PROFILE ERROR:", profileError);
-    }
-
     setAuthor(profileData || null);
 
-    // Get likes
-    const { data: likesData, error: likesError } = await supabase
+    const { data: likesData } = await supabase
       .from("post_likes")
       .select("user_id")
       .eq("post_id", postId);
-
-    if (likesError) {
-      console.error("LIKES ERROR:", likesError);
-    }
-
     setLikeCount(likesData?.length || 0);
+    setLikedByMe((likesData || []).some((like) => like.user_id === user.id));
 
-    setLikedByMe(
-      (likesData || []).some(
-        (like) => like.user_id === user.id
-      )
-    );
-
-    // Get comments
-    const { data: commentsData, error: commentsError } = await supabase
+    const { data: commentsData } = await supabase
       .from("post_comments")
       .select("*")
       .eq("post_id", postId)
       .order("created_at", { ascending: true });
 
-    if (commentsError) {
-      console.error("COMMENTS ERROR:", commentsError);
-    }
-
     const loadedComments = commentsData || [];
-
     setComments(loadedComments);
 
-    // Get comment authors
-    const commentUserIds = [
-      ...new Set(
-        loadedComments.map((comment) => comment.user_id)
-      ),
-    ];
-
-    if (commentUserIds.length > 0) {
-      const {
-        data: commentProfiles,
-        error: commentProfilesError,
-      } = await supabase
+    const commentUserIds = [...new Set(loadedComments.map((comment) => comment.user_id))];
+    if (commentUserIds.length) {
+      const { data: profiles } = await supabase
         .from("profiles")
         .select("id, full_name, college, branch, avatar_url")
         .in("id", commentUserIds);
-
-      if (commentProfilesError) {
-        console.error(
-          "COMMENT PROFILE ERROR:",
-          commentProfilesError
-        );
-      }
-
-      const authorsMap: Record<string, Profile> = {};
-
-      (commentProfiles || []).forEach((profile) => {
-        authorsMap[profile.id] = profile;
+      const map: Record<string, Profile> = {};
+      (profiles || []).forEach((profile) => {
+        map[profile.id] = profile;
       });
-
-      setCommentAuthors(authorsMap);
+      setCommentAuthors(map);
     }
 
     setLoading(false);
   }
 
   async function toggleLike() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.push("/login");
       return;
@@ -192,27 +133,14 @@ export default function ArticlePage() {
         .delete()
         .eq("post_id", postId)
         .eq("user_id", user.id);
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
+      if (error) return console.error(error);
       setLikedByMe(false);
       setLikeCount((count) => Math.max(0, count - 1));
     } else {
       const { error } = await supabase
         .from("post_likes")
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-        });
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
+        .insert({ post_id: postId, user_id: user.id });
+      if (error) return console.error(error);
       setLikedByMe(true);
       setLikeCount((count) => count + 1);
     }
@@ -220,13 +148,9 @@ export default function ArticlePage() {
 
   async function addComment() {
     const text = commentText.trim();
-
     if (!text) return;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.push("/login");
       return;
@@ -234,72 +158,47 @@ export default function ArticlePage() {
 
     const { data, error } = await supabase
       .from("post_comments")
-      .insert({
-        post_id: postId,
-        user_id: user.id,
-        content: text,
-      })
+      .insert({ post_id: postId, user_id: user.id, content: text })
       .select()
       .single();
 
-    if (error) {
+    if (error || !data) {
       console.error("ADD COMMENT ERROR:", error);
       return;
     }
 
     setComments((current) => [...current, data]);
-
     const { data: profileData } = await supabase
       .from("profiles")
       .select("id, full_name, college, branch, avatar_url")
       .eq("id", user.id)
       .maybeSingle();
-
     if (profileData) {
-      setCommentAuthors((current) => ({
-        ...current,
-        [user.id]: profileData,
-      }));
+      setCommentAuthors((current) => ({ ...current, [user.id]: profileData }));
     }
-
     setCommentText("");
   }
 
   async function deleteComment(commentId: string) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
     const { error } = await supabase
       .from("post_comments")
       .delete()
       .eq("id", commentId)
       .eq("user_id", user.id);
+    if (error) return console.error("DELETE COMMENT ERROR:", error);
 
-    if (error) {
-      console.error("DELETE COMMENT ERROR:", error);
-      return;
-    }
-
-    setComments((current) =>
-      current.filter((comment) => comment.id !== commentId)
-    );
+    setComments((current) => current.filter((comment) => comment.id !== commentId));
   }
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-900">
         <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-blue-500" />
-
-          <p className="mt-5 font-bold text-slate-300">
-            Loading article...
-          </p>
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+          <p className="mt-4 font-bold text-slate-500">Loading blog…</p>
         </div>
       </main>
     );
@@ -307,26 +206,14 @@ export default function ArticlePage() {
 
   if (!post) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
-        <div className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/[0.05] p-10 text-center shadow-2xl backdrop-blur-xl">
-
-          <div className="text-5xl">📄</div>
-
-          <h1 className="mt-6 text-3xl font-black">
-            Article not found
-          </h1>
-
-          <p className="mt-3 leading-7 text-slate-400">
-            This article may have been removed or doesn't exist.
-          </p>
-
-          <button
-            onClick={() => router.push("/community")}
-            className="mt-8 w-full rounded-xl bg-blue-600 px-5 py-4 font-bold text-white transition hover:bg-blue-500"
-          >
-            Back to Community
+      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-5 text-slate-900">
+        <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+          <div className="text-4xl">📄</div>
+          <h1 className="mt-5 text-3xl font-black">Blog not found</h1>
+          <p className="mt-3 leading-7 text-slate-500">This blog may have been removed or is no longer available.</p>
+          <button onClick={() => router.push("/community")} className="mt-7 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-blue-600">
+            Back to Blogs
           </button>
-
         </div>
       </main>
     );
@@ -335,246 +222,135 @@ export default function ArticlePage() {
   const isOwner = currentUserId === post.user_id;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-
-      {/* Background */}
-      <div className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
-        <div className="absolute left-1/2 top-[-250px] h-[550px] w-[550px] -translate-x-1/2 rounded-full bg-blue-600/20 blur-[120px]" />
-
-        <div className="absolute right-[-200px] top-[400px] h-[450px] w-[450px] rounded-full bg-cyan-500/10 blur-[120px]" />
-
-        <div className="absolute bottom-[-200px] left-[-200px] h-[450px] w-[450px] rounded-full bg-indigo-600/10 blur-[120px]" />
-      </div>
-
-      {/* Navbar */}
-      <nav className="relative z-10 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
-
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="text-xl font-extrabold tracking-tight text-white sm:text-2xl"
-          >
-            Studexa<span className="text-blue-500">.</span>
+    <main className="min-h-screen bg-slate-50 text-slate-950">
+      <nav className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4 sm:px-6">
+          <button onClick={() => router.push("/")} className="text-xl font-black tracking-tight sm:text-2xl">
+            TECHNERVA<span className="text-blue-600">.</span>
           </button>
-
-          <button
-            onClick={() => router.push("/community")}
-            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-bold text-slate-200 transition hover:bg-white/10"
-          >
-            ← Community
-          </button>
-
+          <div className="flex items-center gap-2">
+            <button onClick={() => router.push("/community")} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
+              ← Blogs
+            </button>
+            <button onClick={() => router.push("/connections")} className="hidden rounded-xl px-4 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 sm:block">
+              Connections
+            </button>
+          </div>
         </div>
       </nav>
 
-      {/* Article */}
-      <section className="relative z-10 mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-16">
-
-        {/* Category + Date */}
-        <div className="flex flex-wrap items-center gap-3">
-
-          <span className="rounded-full border border-blue-400/15 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300">
-            {post.category || "Engineering"}
-          </span>
-
-          <span className="text-sm text-slate-500">
-            {new Date(post.created_at).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </span>
-
-        </div>
-
-        {/* Title */}
-        <h1 className="mt-6 text-4xl font-black tracking-tight text-white sm:text-5xl md:text-6xl">
-          {post.title}
-        </h1>
-
-        {/* Author */}
-        <button
-          onClick={() => router.push(`/profile/${post.user_id}`)}
-          className="mt-7 flex items-center gap-4 text-left"
-        >
-
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-blue-500/10 font-black text-blue-400">
-
-            {author?.avatar_url ? (
-              <img
-                src={author.avatar_url}
-                alt={author.full_name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              author?.full_name?.charAt(0).toUpperCase() || "S"
-            )}
-
-          </div>
-
-          <div>
-            <p className="font-bold text-white">
-              {author?.full_name || "Studexa Student"}
-            </p>
-
-            <p className="text-sm text-slate-500">
-              {author?.college || "Studexa"}
-              {author?.branch && ` • ${author.branch}`}
-            </p>
-          </div>
-
-        </button>
-
-        {/* Owner Controls */}
-        {isOwner && (
-          <div className="mt-6 flex flex-wrap gap-3">
-
-            <button
-              onClick={() =>
-                router.push(`/community/${post.id}/edit`)
-              }
-              className="rounded-xl border border-blue-400/20 bg-blue-500/10 px-5 py-3 text-sm font-bold text-blue-300 transition hover:bg-blue-500/20"
-            >
-              ✏️ Edit Article
-            </button>
-
-          </div>
-        )}
-
-        {/* Article Content */}
-        <article className="mt-8 rounded-3xl border border-white/10 bg-white/[0.05] p-6 shadow-2xl backdrop-blur-xl sm:p-10">
-
-          <div className="whitespace-pre-wrap text-base leading-8 text-slate-300 sm:text-lg sm:leading-9">
-            {post.content}
-          </div>
-
-          {/* Like */}
-          <div className="mt-10 border-t border-white/10 pt-6">
-
-            <button
-              onClick={toggleLike}
-              className={`rounded-xl px-5 py-3 font-bold transition ${
-                likedByMe
-                  ? "bg-red-500/10 text-red-400"
-                  : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {likedByMe ? "❤️" : "♡"} {likeCount}{" "}
-              {likeCount === 1 ? "Like" : "Likes"}
-            </button>
-
-          </div>
-
-        </article>
-
-        {/* Comments */}
-        <section className="mt-10">
-
-          <h2 className="text-2xl font-black">
-            Comments
-            <span className="ml-2 text-base text-slate-500">
-              {comments.length}
+      <div className="technerva-grid">
+        <header className="mx-auto max-w-4xl px-5 pb-8 pt-10 sm:px-6 sm:pt-14">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
+              {post.category || "Engineering"}
             </span>
-          </h2>
+            <span className="text-sm font-medium text-slate-400">
+              {new Date(post.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+            </span>
+          </div>
 
-          {/* Add Comment */}
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl md:text-6xl md:leading-[1.05]">
+            {post.title}
+          </h1>
 
-            <input
-              type="text"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  addComment();
-                }
-              }}
-              placeholder="Write a comment..."
-              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500/50"
-            />
+          <button onClick={() => router.push(`/profile/${post.user_id}`)} className="mt-7 flex items-center gap-3 text-left">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-50 font-black text-blue-700 ring-1 ring-slate-200">
+              {author?.avatar_url ? (
+                <img src={author.avatar_url} alt={author.full_name} className="h-full w-full object-cover" />
+              ) : (
+                author?.full_name?.charAt(0).toUpperCase() || "E"
+              )}
+            </div>
+            <div>
+              <p className="font-bold text-slate-900">{author?.full_name || "Engineering Student"}</p>
+              <p className="text-sm text-slate-500">
+                {author?.college || "Engineering community"}{author?.branch ? ` • ${author.branch}` : ""}
+              </p>
+            </div>
+          </button>
 
-            <button
-              onClick={addComment}
-              className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white transition hover:bg-blue-500"
-            >
-              Comment
+          {isOwner && (
+            <button onClick={() => router.push(`/community/${post.id}/edit`)} className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-100">
+              ✏️ Edit blog
             </button>
+          )}
+        </header>
 
-          </div>
+        <section className="mx-auto max-w-4xl px-5 pb-16 sm:px-6">
+          <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10 md:p-12">
+            <div className="whitespace-pre-wrap text-[17px] leading-8 text-slate-700 sm:text-lg sm:leading-9">
+              {post.content}
+            </div>
 
-          {/* Comment List */}
-          <div className="mt-6 space-y-4">
+            <div className="mt-10 flex items-center gap-3 border-t border-slate-100 pt-6">
+              <button
+                onClick={toggleLike}
+                className={`rounded-xl px-4 py-2.5 text-sm font-bold transition ${likedByMe ? "bg-blue-50 text-blue-700" : "bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-700"}`}
+              >
+                {likedByMe ? "♥" : "♡"} {likeCount} {likeCount === 1 ? "Like" : "Likes"}
+              </button>
+            </div>
+          </article>
 
-            {comments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
-                <p className="text-slate-500">
-                  No comments yet. Be the first to comment.
-                </p>
+          {error && <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 font-semibold text-red-700">{error}</div>}
+
+          <section className="mt-10">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-extrabold tracking-[0.18em] text-blue-600">DISCUSSION</p>
+                <h2 className="mt-2 text-2xl font-black">Comments <span className="text-base font-bold text-slate-400">{comments.length}</span></h2>
               </div>
-            ) : (
-              comments.map((comment) => {
-                const commentAuthor =
-                  commentAuthors[comment.user_id];
+            </div>
 
-                return (
-                  <div
-                    key={comment.id}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"
-                  >
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") addComment(); }}
+                  placeholder="Share your thoughts…"
+                  className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:bg-white"
+                />
+                <button onClick={addComment} className="rounded-xl bg-slate-950 px-6 py-3 text-sm font-bold text-white hover:bg-blue-600">
+                  Comment
+                </button>
+              </div>
+            </div>
 
-                    <div className="flex items-start justify-between gap-4">
-
-                      <div className="min-w-0">
-
-                        <button
-                          onClick={() =>
-                            router.push(
-                              `/profile/${comment.user_id}`
-                            )
-                          }
-                          className="font-bold text-white hover:text-blue-400"
-                        >
-                          {commentAuthor?.full_name ||
-                            "Studexa Student"}
+            <div className="mt-5 space-y-3">
+              {comments.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+                  <p className="font-medium text-slate-500">No comments yet. Start the discussion.</p>
+                </div>
+              ) : (
+                comments.map((comment) => {
+                  const commentAuthor = commentAuthors[comment.user_id];
+                  return (
+                    <div key={comment.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-start justify-between gap-4">
+                        <button onClick={() => router.push(`/profile/${comment.user_id}`)} className="min-w-0 text-left">
+                          <p className="font-bold text-slate-900 hover:text-blue-600">{commentAuthor?.full_name || "Engineering Student"}</p>
+                          <p className="mt-1 text-sm text-slate-400">
+                            {new Date(comment.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </p>
                         </button>
-
-                        <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-400">
-                          {comment.content}
-                        </p>
-
-                        <p className="mt-2 text-xs text-slate-600">
-                          {new Date(
-                            comment.created_at
-                          ).toLocaleDateString("en-IN")}
-                        </p>
-
+                        {currentUserId === comment.user_id && (
+                          <button onClick={() => deleteComment(comment.id)} className="shrink-0 text-xs font-bold text-slate-400 hover:text-red-600">
+                            Delete
+                          </button>
+                        )}
                       </div>
-
-                      {/* Only comment owner can delete */}
-                      {currentUserId === comment.user_id && (
-                        <button
-                          onClick={() =>
-                            deleteComment(comment.id)
-                          }
-                          className="shrink-0 text-xs font-bold text-red-400 transition hover:text-red-300"
-                        >
-                          Delete
-                        </button>
-                      )}
-
+                      <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">{comment.content}</p>
                     </div>
-
-                  </div>
-                );
-              })
-            )}
-
-          </div>
-
+                  );
+                })
+              )}
+            </div>
+          </section>
         </section>
-
-      </section>
-
+      </div>
     </main>
   );
 }

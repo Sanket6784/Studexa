@@ -1,150 +1,86 @@
-# Studexa 🚀
+# TECHNERVA 🚀
 
-> Your student identity, beyond the resume.
+> The Engineering Student Network.
 
-Studexa is a full-stack student platform designed to help students build, showcase, and grow their professional identity.
+Technerva is a professional platform designed for engineering students to build, showcase, and grow their identity beyond the resume.
 
-Students can create professional profiles, showcase projects, write articles, connect with other students, and build an online presence beyond a traditional resume.
+Students can create professional profiles, showcase projects, publish blogs, connect with other students, and build an online presence around their engineering journey.
 
 ---
 
-## 📌 About the Project
+## About the Project
 
 A traditional resume can only show a limited amount of a student's journey.
 
-Students build projects, learn technologies, participate in activities, write about what they learn, and gain experiences throughout college.
+Students build projects, learn technologies, participate in hackathons and internships, conduct research, write about what they learn, and gain experiences throughout college.
 
-Studexa brings these things together into one platform.
+Technerva brings these things together into one engineering-focused network.
 
-With Studexa, students can create a professional identity and showcase:
+Students can showcase:
 
-- 👤 Personal profile
-- 🎓 Education
-- 💻 Projects
-- 🛠️ Skills
-- 📝 Articles
-- 🌐 Community activity
-- 🔗 Public profile
+- Personal profile
+- Education
+- Projects
+- Skills
+- Blogs
+- Community activity
+- Connections
+- Public engineering profile
 
 ### Main idea
 
-**Learn. Build. Grow.**
+**Engineering Ideas. Real Impact.**
 
 ---
 
-# ✨ Features
+## Features
 
-## 👤 Student Profiles
+### Engineering Profiles
 
-Students can create a professional profile containing:
+Students can create a professional engineering profile containing their background, education, skills, projects, and experience.
 
-- Full name
-- College
-- Branch
-- Graduation year
-- Skills
-- Bio
+### Projects
 
-Each student has a public profile that can showcase their background and projects.
+Showcase projects with descriptions, technologies used, GitHub repositories, and live demos.
 
----
+### Blogs
 
-## 💻 Projects
+Share technical knowledge, project stories, research, internship experiences, hackathon experiences, and engineering insights.
 
-Students can showcase the projects they have built.
+### Community
 
-Projects can contain:
+Discover and interact with work from other engineering students through the Technerva community.
 
-- Project title
-- Description
-- Technologies used
-- GitHub repository
-- Live demo
+### Connections
 
-This allows students to demonstrate practical skills instead of only listing technologies on a resume.
+Connect with other engineering students and grow a professional student network.
 
----
+### Dashboard
 
-## 📝 Articles
+Manage your profile, projects, blogs, connections, and public engineering presence from one place.
 
-Students can share their knowledge and experiences through articles.
+### Authentication
 
-Possible topics include:
-
-- Programming
-- Web development
-- Artificial intelligence
-- College experiences
-- Projects
-- Career preparation
-- Technology
-- Learning experiences
-
-Articles help students demonstrate both technical knowledge and communication skills.
+Technerva uses Supabase Authentication for account creation, login, protected pages, and user-linked profiles.
 
 ---
 
-## 🌐 Community
+## Tech Stack
 
-Studexa provides a student-focused community where users can:
-
-- Create posts
-- Share ideas
-- Read posts from other students
-- Like posts
-- Comment
-- Interact with other students
-
-The goal is to create a professional environment where students can learn from each other.
-
----
-
-## 📊 Dashboard
-
-The dashboard provides a central place for students to manage their Studexa profile.
-
-It gives access to:
-
-- Profile
-- Projects
-- Articles
-- Community
-- Public profile
-
----
-
-## 🔐 Authentication
-
-Studexa uses Supabase Authentication.
-
-Users can:
-
-- Create an account
-- Log in
-- Access protected pages
-- Create their student profile
-- Manage their data
-
-Each authenticated user is connected to their corresponding profile through their Supabase user ID.
-
----
-
-# 🛠️ Tech Stack
-
-## Frontend
+### Frontend
 
 - Next.js
 - React
 - TypeScript
 - Tailwind CSS
 
-## Backend
+### Backend
 
 - Supabase
 - PostgreSQL
 - Supabase Authentication
 
-## Development Tools
+### Development Tools
 
 - Node.js
 - npm
@@ -154,27 +90,22 @@ Each authenticated user is connected to their corresponding profile through thei
 
 ---
 
-# 📂 Project Structure
+## Project Structure
 
 ```text
-studexa/
+technerva/
 │
 ├── app/
 │   ├── community/
+│   ├── connections/
 │   ├── dashboard/
 │   ├── login/
 │   ├── profile/
-│   │   └── setup/
+│   ├── projects/
 │   ├── signup/
-│   │
-│   ├── page.tsx
 │   └── ...
 │
-├── lib/
-│   └── supabase.ts
-│
 ├── public/
-│
 ├── .gitignore
 ├── package.json
 ├── package-lock.json
@@ -182,3 +113,4 @@ studexa/
 ├── postcss.config.mjs
 ├── tsconfig.json
 └── README.md
+```

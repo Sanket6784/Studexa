@@ -14,16 +14,14 @@ export default function CertificatePage() {
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace(`/login?redirect=/certificate/${params.id}`); return; }
       const { data } = await supabase.from("publication_submissions").select("id,user_id,name,college,title,category,status,certificate_id,certificate_issued_at,post_id").eq("id", params.id).single();
       if (data && data.status === "approved" && data.certificate_id) setSubmission(data as Submission);
       setLoading(false);
     })();
-  }, [params.id, router]);
+  }, [params.id]);
 
   if (loading) return <main className="flex min-h-screen items-center justify-center bg-slate-100"><p className="font-bold text-slate-500">Loading certificate...</p></main>;
-  if (!submission) return <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6"><div className="text-center"><h1 className="text-3xl font-black">Certificate unavailable</h1><p className="mt-3 text-slate-500">This certificate has not been issued or you do not have access to it.</p><button onClick={() => router.push("/")} className="mt-6 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white">Back home</button></div></main>;
+  if (!submission) return <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6"><div className="text-center"><h1 className="text-3xl font-black">Certificate unavailable</h1><p className="mt-3 text-slate-500">This certificate has not been issued or the certificate ID is invalid.</p><button onClick={() => router.push("/")} className="mt-6 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white">Back home</button></div></main>;
 
   const date = submission.certificate_issued_at ? new Date(submission.certificate_issued_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : "";
   return (
